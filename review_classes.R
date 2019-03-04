@@ -4,6 +4,7 @@ source('G:/My Drive/R_toolkit/graph_tools.R')
 Cohort <- R6Class(
   "Cohort",
   public = list(
+    id = NULL,
     author = '',
     smear_status = '',
     cohort_name = '',
@@ -14,8 +15,9 @@ Cohort <- R6Class(
     perc_alive = NULL,
     formatted_data = NULL,
   
-    initialize = function(author, smear_status, cohort_name, year_range,
+    initialize = function(id, author, smear_status, cohort_name, year_range,
                           cohort_size, times, perc_death, perc_alive){
+      self$id = id
       self$author = author
       self$smear_status = smear_status
       self$cohort_name = cohort_name
@@ -50,7 +52,6 @@ Cohort <- R6Class(
       # format the data
       if (!is.null(self$cohort_size)){
         self$format_data()
-        
       }
     },
     
@@ -113,12 +114,15 @@ Analysis <- R6Class(
     "Analysis",
     public = list(
       cohorts = c(),
+      n_cohorts = 0,
      
       add_cohort = function(author, smear_status, cohort_name, year_range,
                             cohort_size, times, perc_death, perc_alive){
-        cohort = Cohort$new(author, smear_status, cohort_name, year_range,
+        cohort_id = self$n_cohorts + 1
+        cohort = Cohort$new(cohort_id, author, smear_status, cohort_name, year_range,
                             cohort_size, times, perc_death, perc_alive)
         self$cohorts = c(self$cohorts, cohort)
+        self$n_cohorts = cohort_id
       },
      
       plot_cohort_dates = function(){

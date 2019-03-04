@@ -454,6 +454,7 @@ analysis$add_cohort(author = 'Munchbach',
                      perc_alive = NULL
 )
 
+
 #______________________________________________________________-
 # RUNNING methods
 # analysis$plot_multi_cohort(plot_model=FALSE)
