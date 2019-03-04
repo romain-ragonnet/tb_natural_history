@@ -5,4 +5,4 @@ source('load_data.R')
 #LL= analysis$evaluate_pseudo_loglikelihood(model = 1, params=pars)
 #print(LL)
 
-analysis$plot_ll_surface(model=1, param_ranges=list('gamma'=c(0.001,0.4), 'mu_t'=c(0.001,0.15)), n_per_axis=10)
+z = analysis$plot_ll_surface(model=1, param_ranges=list('gamma'=c(0.1,0.4), 'mu_t'=c(0.01,0.15)), n_per_axis=10)

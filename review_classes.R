@@ -58,13 +58,14 @@ Cohort <- R6Class(
     format_data = function(){
       n_rows = length(self$times) - 1
       u = rep(NA,n_rows)
-      formatted_data = data.frame('t_start'=u, 'delta_t'=u, 'n_at_risk'=u, 'n_new_deaths'=u, 'cohort_id'=u)
+      formatted_data = data.frame('t_start'=u, 'delta_t'=u, 'n_at_risk'=u, 'n_new_deaths'=u, 'smear_status'=u, 'cohort_id'=u)
       
       for (i in 1:n_rows){  # i represent the index of the starting time
         formatted_data$t_start[i] = self$times[i]
         formatted_data$delta_t[i] = self$times[i+1] - self$times[i]
         formatted_data$n_at_risk[i] = round((1 - self$perc_death[i]/100) * self$cohort_size)
         formatted_data$n_new_deaths[i] = round((self$perc_death[i+1] - self$perc_death[i])*self$cohort_size/100)
+        formatted_data$smear_status[i] = self$smear_status
         formatted_data$cohort_id[i] = self$id
         
         if (formatted_data$n_at_risk[i] < formatted_data$n_new_deaths[i]){
@@ -128,7 +129,7 @@ Analysis <- R6Class(
       },
      
       produce_main_dataframe = function(){
-        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(), 'cohort_id'=integer())
+        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(),'smear_status'=character(), 'cohort_id'=integer())
         
         for (c in self$cohorts){
           self$all_data = rbind(self$all_data, c$formatted_data)
@@ -158,7 +159,7 @@ Analysis <- R6Class(
           B = 1 - exp(-mu * data_item$delta_t)
           
           # combine the different components:
-          p = P_t_start_1 * A + P_t_start_2 * B
+          p = (P_t_start_1 * A + P_t_start_2 * B) / (P_t_start_1 + P_t_start_2)
           detach(params)
         }
         return(p)
@@ -166,49 +167,55 @@ Analysis <- R6Class(
       },
       
       
-      evaluate_pseudo_loglikelihood = function(model, params){
+      evaluate_pseudo_loglikelihood = function(model, params, smear_status=c('positive')){
         # returns the variable component of the log-likelihood function.
         # we do not need the true log-likelihood for the MCMC algorithm.
         # model is one of {1, 2}
         # params is a list of parameters keyed with the parameter names and valued with the parameter values
         pseudo_ll = 0
         for (j in 1:nrow(self$all_data)){
-          # evaluate the probability of death between t_k and t_k+1
-          p = self$get_individual_death_proba(self$all_data[j,], model, params)
-          if (p==0){
-            print("Warning: death probability is 0")
+          if (self$all_data$smear_status[j] %in% smear_status){
+            # evaluate the probability of death between t_k and t_k+1
+            p = self$get_individual_death_proba(self$all_data[j,], model, params)
+            if (p==0){
+              print("Warning: death probability is 0")
+            }
+            y_k = self$all_data$n_new_deaths[j]
+            n_k = self$all_data$n_at_risk[j]
+            pseudo_ll = pseudo_ll + y_k * log(p) + (n_k - y_k) * log(1 - p)
           }
-          y_k = self$all_data$n_new_deaths[j]
-          n_k = self$all_data$n_at_risk[j]
-          pseudo_ll = pseudo_ll + y_k * log(p) + (n_k - y_k) * log(1 - p)
         }
-        
         return(pseudo_ll)
-        
       },
      
-      plot_ll_surface = function(model, param_ranges, n_per_axis){
+      plot_ll_surface = function(model, param_ranges, n_per_axis, smear_status=c('positive')){
         if (model==1){
-          mu = 1/70
+          mu = 1/55
           
           x = seq(param_ranges$gamma[1], param_ranges$gamma[2], length.out = n_per_axis)
           y = seq(param_ranges$mu_t[1], param_ranges$mu_t[2], length.out = n_per_axis)
           z = matrix(rep(NA,n_per_axis*n_per_axis), nrow = n_per_axis, ncol = n_per_axis)
           
+          best_params = c(0,0)
+          best_z = -1e10
           for (i in 1:n_per_axis){
             for (j in 1:n_per_axis){
               pars=list('gamma'=x[i] , 'mu'=mu, 'mu_t'=y[j])
-              z[i,j] = self$evaluate_pseudo_loglikelihood(model = 1, params=pars)
+              ll = self$evaluate_pseudo_loglikelihood(model = 1, params=pars,smear_status = smear_status)
+              z[i,j] = ll
+              if (ll>best_z){
+                best_z = ll
+                best_params = c(x[i], y[j])
+              }
+              
             }
           }
         }
         x11()
         persp(x,y,z)
         
-        
-        print(x)
-        print(y)
-        print(z)
+        print(best_params)
+        return(z)
         
       },
              
