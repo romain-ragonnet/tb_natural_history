@@ -135,7 +135,86 @@ Analysis <- R6Class(
         }
         
       },
+
+      # ____________________________________
+      #  MCMC algorithm for the fixed effects model
+      get_individual_death_proba = function(data_item, model, params){
+        # returns the probability of death according to the model given the information provided in data_item
+        # That is, individual is still alive at time t_start and we want to know the probability of death at time
+        # t_start + delta_t
+        
+        if (model == 1){
+          # we use the three-state model
+          attach(params)
+          # proba of being in state 1 (active TB) at time t_start 
+          P_t_start_1 = exp(-(gamma + mu + mu_t)*data_item$t_start)
+          # proba of being in state 2 (recovered) at time t_start 
+          P_t_start_2 = (gamma / (gamma + mu_t)) * (exp(-mu*data_item$t_start) - exp(-(gamma + mu + mu_t)*data_item$t_start))
+        
+          # evaluate vector (1, 0, 0) times exponetial of matrix Q (delta_t) times vector (0 0 1)
+          A = 1 - (gamma / (gamma + mu_t)) * exp(-mu * data_item$delta_t) - mu_t * exp(-(gamma + mu + mu_t) * data_item$delta_t)   
+            
+          # evaluate vector (0, 1, 0) times exponetial of matrix Q (delta_t) times vector (0 0 1)
+          B = 1 - exp(-mu * data_item$delta_t)
+          
+          # combine the different components:
+          p = P_t_start_1 * A + P_t_start_2 * B
+          detach(params)
+        }
+        return(p)
+        
+      },
       
+      
+      evaluate_pseudo_loglikelihood = function(model, params){
+        # returns the variable component of the log-likelihood function.
+        # we do not need the true log-likelihood for the MCMC algorithm.
+        # model is one of {1, 2}
+        # params is a list of parameters keyed with the parameter names and valued with the parameter values
+        pseudo_ll = 0
+        for (j in 1:nrow(self$all_data)){
+          # evaluate the probability of death between t_k and t_k+1
+          p = self$get_individual_death_proba(self$all_data[j,], model, params)
+          if (p==0){
+            print("Warning: death probability is 0")
+          }
+          y_k = self$all_data$n_new_deaths[j]
+          n_k = self$all_data$n_at_risk[j]
+          pseudo_ll = pseudo_ll + y_k * log(p) + (n_k - y_k) * log(1 - p)
+        }
+        
+        return(pseudo_ll)
+        
+      },
+     
+      plot_ll_surface = function(model, param_ranges, n_per_axis){
+        if (model==1){
+          mu = 1/70
+          
+          x = seq(param_ranges$gamma[1], param_ranges$gamma[2], length.out = n_per_axis)
+          y = seq(param_ranges$mu_t[1], param_ranges$mu_t[2], length.out = n_per_axis)
+          z = matrix(rep(NA,n_per_axis*n_per_axis), nrow = n_per_axis, ncol = n_per_axis)
+          
+          for (i in 1:n_per_axis){
+            for (j in 1:n_per_axis){
+              pars=list('gamma'=x[i] , 'mu'=mu, 'mu_t'=y[j])
+              z[i,j] = self$evaluate_pseudo_loglikelihood(model = 1, params=pars)
+            }
+          }
+        }
+        x11()
+        persp(x,y,z)
+        
+        
+        print(x)
+        print(y)
+        print(z)
+        
+      },
+             
+      # ____________________________________
+      #     Plotting methods below
+            
       plot_cohort_dates = function(){
         n_coh = length(self$cohorts)
         line_height = 1.8
@@ -209,10 +288,7 @@ Analysis <- R6Class(
         dev.off()
       },
       
-      
-      
-      
-      
+  
       #_____________________________________________________________________________________
       #                 Methods below are based on a deterministic verison of the model (ODE-based)
       death_proportion_model_1 = function(t, mu, mu_t, gamma){

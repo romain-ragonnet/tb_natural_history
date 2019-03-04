@@ -454,6 +454,9 @@ analysis$add_cohort(author = 'Munchbach',
                      perc_alive = NULL
 )
 
+# ___________________________________
+#   Preliminary work
+analysis$produce_main_dataframe()
 
 #______________________________________________________________-
 # RUNNING methods
