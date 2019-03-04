@@ -58,13 +58,14 @@ Cohort <- R6Class(
     format_data = function(){
       n_rows = length(self$times) - 1
       u = rep(NA,n_rows)
-      formatted_data = data.frame('t_start'=u, 'delta_t'=u, 'n_at_risk'=u, 'n_new_deaths'=u)
+      formatted_data = data.frame('t_start'=u, 'delta_t'=u, 'n_at_risk'=u, 'n_new_deaths'=u, 'cohort_id'=u)
       
       for (i in 1:n_rows){  # i represent the index of the starting time
         formatted_data$t_start[i] = self$times[i]
         formatted_data$delta_t[i] = self$times[i+1] - self$times[i]
         formatted_data$n_at_risk[i] = round((1 - self$perc_death[i]/100) * self$cohort_size)
         formatted_data$n_new_deaths[i] = round((self$perc_death[i+1] - self$perc_death[i])*self$cohort_size/100)
+        formatted_data$cohort_id[i] = self$id
         
         if (formatted_data$n_at_risk[i] < formatted_data$n_new_deaths[i]){
           print("WARNING: more dead persons than at_risk persons")
@@ -115,6 +116,7 @@ Analysis <- R6Class(
     public = list(
       cohorts = c(),
       n_cohorts = 0,
+      all_data = NULL,
      
       add_cohort = function(author, smear_status, cohort_name, year_range,
                             cohort_size, times, perc_death, perc_alive){
@@ -125,6 +127,15 @@ Analysis <- R6Class(
         self$n_cohorts = cohort_id
       },
      
+      produce_main_dataframe = function(){
+        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(), 'cohort_id'=integer())
+        
+        for (c in self$cohorts){
+          self$all_data = rbind(self$all_data, c$formatted_data)
+        }
+        
+      },
+      
       plot_cohort_dates = function(){
         n_coh = length(self$cohorts)
         line_height = 1.8
@@ -197,6 +208,13 @@ Analysis <- R6Class(
         }
         dev.off()
       },
+      
+      
+      
+      
+      
+      #_____________________________________________________________________________________
+      #                 Methods below are based on a deterministic verison of the model (ODE-based)
       death_proportion_model_1 = function(t, mu, mu_t, gamma){
         A = (mu+mu_t)/(mu+mu_t+gamma) - mu*gamma/((mu_t+gamma)*(mu+mu_t+gamma))
         B = 1 - exp(-(mu+mu_t+gamma)*t)
