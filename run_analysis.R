@@ -10,4 +10,9 @@ source('load_data.R')
 # z = analysis$plot_ll_surface(model=1, param_ranges=param_ranges, n_per_axis=n_per_axis,smear_status = c("positive"))
 
 
+analysis$run_metropolis(model = 1,n_iterations = 100,smear_status = c('positive'))
+# View(analysis$metropolis_records)
+#analysis$produce_mcmc_outputs(model = 1,smear_status = c('positive'))
 
+outputs = Outputs$new(analysis)
+outputs$produce_mcmc_outputs(model = 1)

@@ -117,6 +117,8 @@ Analysis <- R6Class(
       cohorts = c(),
       n_cohorts = 0,
       all_data = NULL,
+      proposal_sd = list('gamma'=0.01, 'mu_t'=0.02),
+      metropolis_records = NULL,
      
       add_cohort = function(author, smear_status, cohort_name, year_range,
                             cohort_size, times, perc_death, perc_alive){
@@ -167,7 +169,6 @@ Analysis <- R6Class(
         
       },
       
-      
       evaluate_pseudo_loglikelihood = function(model, params, smear_status=c('positive')){
         # returns the variable component of the log-likelihood function.
         # we do not need the true log-likelihood for the MCMC algorithm.
@@ -190,7 +191,87 @@ Analysis <- R6Class(
         }
         return(pseudo_ll)
       },
-     
+
+      evaluate_log_priors = function(model, params, smear_status=c('positive')){
+        log_prior = 0
+        return(log_prior)
+      },
+
+      proposal_function = function(current_param_vals){
+        # current_param_vals is a list keyed with the names of the params and valued with their current values
+        proposed_param_vals = current_param_vals
+        for (par in names(current_param_vals)){
+          if (par != 'mu'){
+            proposed_param_vals[[par]] = rnorm(1,mean = current_param_vals[[par]],sd = self$proposal_sd[[par]])
+          }
+        }
+        return(proposed_param_vals)
+      },      
+      
+      store_mcmc_iteration = function(proposed_param_vals,pseudo_ll,accepted, index){
+        for (par in names(proposed_param_vals)){
+          if (par != 'mu'){
+            self$metropolis_records[[par]][index] = proposed_param_vals[[par]]
+          }
+        }
+        self$metropolis_records$pseudo_ll[index] = pseudo_ll
+        self$metropolis_records$accepted[index] = accepted
+      },
+      
+      run_metropolis = function(model,n_iterations, smear_status=c('positive')){
+        # Runs Metropolis algorithm for n_iterations
+        if (model == 1){
+          self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations), 'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
+        
+          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'mu'=1/55)
+          
+        }else{
+          print("Model not supported in MCMC for the moment.")
+        }
+        
+        current_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model, params=current_param_vals, smear_status=smear_status)
+        
+        self$store_mcmc_iteration(proposed_param_vals=current_param_vals, pseudo_ll=current_pseudo_ll, accepted=1, index=1)
+        for (j in 2:n_iterations){
+          accepted = 1    #may change later on
+          
+          # new candidate parameter values
+          candidate_param_vals = self$proposal_function(current_param_vals)
+          
+          # test for negative values
+          for (par in names(candidate_param_vals)){
+            if (candidate_param_vals[[par]] < 0){
+              accepted = 0
+              break
+            } 
+          }
+          
+          # if proposed parameter values are acceptable
+          if (accepted == 1){
+            candidate_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model,params=candidate_param_vals, smear_status=smear_status)
+            
+            # decide acceptance
+            if (candidate_pseudo_ll >= current_pseudo_ll){
+              accepted = 1
+            }else{
+              log_accept_proba = candidate_pseudo_ll - current_pseudo_ll
+              accepted = rbinom(1,1,prob = exp(log_accept_proba))
+            }
+          }else{
+            candidate_pseudo_ll = NA
+          }     
+          
+          # store information
+          self$store_mcmc_iteration(proposed_param_vals=candidate_param_vals, pseudo_ll=candidate_pseudo_ll, accepted=accepted, index=j)
+                
+          # update variables
+          if (accepted == 1){
+            current_param_vals = candidate_param_vals
+            current_pseudo_ll = candidate_pseudo_ll
+          }
+        }
+      },
+           
       plot_ll_surface = function(model, param_ranges, n_per_axis, smear_status=c('positive')){
         if (model==1){
           mu = 1/55
@@ -378,4 +459,75 @@ Analysis <- R6Class(
         return(opt)
       }
     )
+)
+
+
+Outputs <- R6Class(
+  "Outputs",
+  public = list(
+    analysis = NULL,
+    true_mcmc_outputs = NULL,
+    
+    initialize = function(analysis){
+      self$analysis = analysis 
+    },
+    
+    produce_mcmc_outputs = function(model, smear_status=c('positive')){
+      
+      # parameter values and log likelihhod over iterations
+      filename = 'outputs/mcmc/parameter_progression'
+      open_figure(filename, 'png', w=12, h=9)
+      n_params = length(self$analysis$proposal_sd)
+      par(mfrow=c(n_params+1,1))
+      colour_list = c('black', 'red')  # black for rejected / red for accepted
+      colours = colour_list[self$analysis$metropolis_records$accepted + 1]
+      for (par in names(self$analysis$proposal_sd)){
+        plot(self$analysis$metropolis_records[[par]], pch=19,xlab='iteration',ylab=par, col=colours)  
+        lines(self$analysis$metropolis_records[[par]])
+      }
+      plot(self$analysis$metropolis_records$pseudo_ll, pch=19,xlab='iteration',ylab='pseudo log-likelihood', col=colours)  
+      lines(self$analysis$metropolis_records$pseudo_ll)
+      dev.off()
+      
+      # compute new table where rejected iterations are replaced with latest accepted ones
+      self$true_mcmc_outputs = self$analysis$metropolis_records
+      last_accepted_index = 1
+      for (j in 2:nrow(self$analysis$metropolis_records)){
+        if (self$analysis$metropolis_records$accepted[j] == 1){
+          last_accepted_index = j
+        }else{
+          for (name in colnames(self$true_mcmc_outputs)){
+            self$true_mcmc_outputs[[name]][j] = self$analysis$metropolis_records[[name]][last_accepted_index]
+          }
+        }
+      }
+      
+      # posterior distributions (marginal)
+      for (par in names(self$analysis$proposal_sd)){
+        filename = paste('outputs/mcmc/histogram_', par, sep='')
+        open_figure(filename, 'png', w=12, h=9)
+        hist(self$true_mcmc_outputs[[par]],breaks=20,xlab=par,main='')
+        dev.off()
+      }
+      
+      # joined posterior distribution
+      # -> dotted
+      params = names(self$analysis$proposal_sd)
+      for (i in 1:(length(params)-1)){
+        for (j in (i+1):length(params)){
+          par1 = params[i]
+          par2 = params[j]
+          filename = paste('outputs/mcmc/joint_scatter_', par1, '_', par2, sep='')
+          open_figure(filename, 'png', w=12, h=9)
+          plot(self$true_mcmc_outputs[[par1]], self$true_mcmc_outputs[[par2]], pch=19, xlab=par1, ylab=par2)
+          dev.off()
+        }
+      }
+            
+      
+      # print some stats
+      str = paste("MCMC acceptance ratio: ", round(100*sum(self$analysis$metropolis_records$accepted)/nrow(self$analysis$metropolis_records)) ,' %', sep='')
+      print(str)
+    }
+  )
 )
