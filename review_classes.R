@@ -1,4 +1,5 @@
 library(R6)
+library(forecast)
 source('G:/My Drive/R_toolkit/graph_tools.R')
 
 Cohort <- R6Class(
@@ -120,6 +121,7 @@ Analysis <- R6Class(
       proposal_sd = list('gamma'=0.01, 'mu_t'=0.01),
       mu = 1/55,
       metropolis_records = NULL,
+      burned_iterations = 0,
      
       add_cohort = function(author, smear_status, cohort_name, year_range,
                             cohort_size, times, perc_death, perc_alive){
@@ -219,8 +221,9 @@ Analysis <- R6Class(
         self$metropolis_records$accepted[index] = accepted
       },
       
-      run_metropolis = function(model,n_iterations, smear_status=c('positive')){
+      run_metropolis = function(model,n_iterations, n_burned, smear_status=c('positive')){
         # Runs Metropolis algorithm for n_iterations
+        self$burned_iterations = n_burned
         if (model == 1){
           self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations), 'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
         
@@ -495,12 +498,19 @@ Outputs <- R6Class(
       for (par in names(self$analysis$proposal_sd)){
         plot(self$analysis$metropolis_records[[par]], pch=19,xlab='iteration',ylab=par, col=colours)  
         lines(self$analysis$metropolis_records[[par]])
+        if (self$analysis$burned_iterations > 0){
+          abline(v=self$analysis$burned_iterations, lty=2)
+        }
       }
       plot(self$analysis$metropolis_records$pseudo_ll, pch=19,xlab='iteration',ylab='pseudo log-likelihood', col=colours)  
       lines(self$analysis$metropolis_records$pseudo_ll)
+      if (self$analysis$burned_iterations > 0){
+        abline(v=self$analysis$burned_iterations, lty=2)
+      }
       dev.off()
       
       # compute new table where rejected iterations are replaced with latest accepted ones
+      # burned iterations are also removed
       self$true_mcmc_outputs = self$analysis$metropolis_records
       last_accepted_index = 1
       for (j in 2:nrow(self$analysis$metropolis_records)){
@@ -512,6 +522,9 @@ Outputs <- R6Class(
           }
         }
       }
+       # burn-in
+      self$true_mcmc_outputs = self$true_mcmc_outputs[(self$analysis$burned_iterations+1):nrow(self$true_mcmc_outputs),]
+      
       
       # posterior distributions (marginal)
       for (par in names(self$analysis$proposal_sd)){
@@ -544,6 +557,16 @@ Outputs <- R6Class(
       # produce best_likelihood fitted graph
       self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
                                       gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max] ,mu = self$analysis$mu, from_mcmc=TRUE) 
+      
+      # ACF graphs
+      # parameter values and log likelihhod over iterations
+      for (par in names(self$analysis$proposal_sd)){
+        filename = paste('outputs/mcmc/correlogram_',par,sep='')
+        open_figure(filename, 'png', w=12, h=9)
+        plot <- ggAcf(x = self$true_mcmc_outputs[[par]], lag.max = 20, type='correlation',title=par)
+        print(plot)
+        dev.off()
+      }
       
       # print some stats
       str = paste("MCMC acceptance ratio: ", round(100*sum(self$analysis$metropolis_records$accepted)/nrow(self$analysis$metropolis_records)) ,' %', sep='')
