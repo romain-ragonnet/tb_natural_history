@@ -117,7 +117,8 @@ Analysis <- R6Class(
       cohorts = c(),
       n_cohorts = 0,
       all_data = NULL,
-      proposal_sd = list('gamma'=0.01, 'mu_t'=0.02),
+      proposal_sd = list('gamma'=0.01, 'mu_t'=0.01),
+      mu = 1/55,
       metropolis_records = NULL,
      
       add_cohort = function(author, smear_status, cohort_name, year_range,
@@ -223,7 +224,7 @@ Analysis <- R6Class(
         if (model == 1){
           self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations), 'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
         
-          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'mu'=1/55)
+          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'mu'=self$mu)
           
         }else{
           print("Model not supported in MCMC for the moment.")
@@ -232,7 +233,14 @@ Analysis <- R6Class(
         current_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model, params=current_param_vals, smear_status=smear_status)
         
         self$store_mcmc_iteration(proposed_param_vals=current_param_vals, pseudo_ll=current_pseudo_ll, accepted=1, index=1)
+        last_print_j = 0
         for (j in 2:n_iterations){
+          if ((j-last_print_j) >= 10){
+            str = paste('Completed iteration ', j, sep='')
+            print(str)
+            last_print_j = j
+          }
+          
           accepted = 1    #may change later on
           
           # new candidate parameter values
@@ -274,7 +282,7 @@ Analysis <- R6Class(
            
       plot_ll_surface = function(model, param_ranges, n_per_axis, smear_status=c('positive')){
         if (model==1){
-          mu = 1/55
+          mu = self$mu
           
           x = seq(param_ranges$gamma[1], param_ranges$gamma[2], length.out = n_per_axis)
           y = seq(param_ranges$mu_t[1], param_ranges$mu_t[2], length.out = n_per_axis)
@@ -336,7 +344,7 @@ Analysis <- R6Class(
       },
       
       plot_multi_cohort = function(smear_status=c('positive', 'negative'), 
-                                   plot_model=FALSE, model=1, mu=NA, mu_t=NA, gamma=NA,kappa=NA, alpha=NA){
+                                   plot_model=FALSE, model=1, mu=NA, mu_t=NA, gamma=NA,kappa=NA, alpha=NA, from_mcmc=FALSE){
         xmax = 0
         cohorts_to_plot = c()
             
@@ -356,6 +364,9 @@ Analysis <- R6Class(
         if (plot_model){
           title = paste('Model',model,sep=' ')
           filename = paste(filename, "with_model", model, sep="_")
+        }
+        if (from_mcmc){
+          filename = "outputs/mcmc/best_fit_to_data"
         }
         open_figure(filename, 'png', w=12, h=9)
         plot(0,0,xlim=c(0,xmax), ylim=c(0,100), xlab='time (years)',
@@ -423,7 +434,7 @@ Analysis <- R6Class(
         }
         return(square_dist)
       },
-      optimise_fit = function(mu=1/55, smear_status=c('positive'), model=1){
+      optimise_fit = function(mu=self$mu, smear_status=c('positive'), model=1){
         if (model == 1){
           fun_to_minimise = function(params){
             mu_t = params[1]
@@ -524,6 +535,15 @@ Outputs <- R6Class(
         }
       }
             
+      # maximum-likelihood estimates
+      j_max = which.max(self$analysis$metropolis_records$pseudo_ll)
+      str = paste("Maximul likelihood parameter set found after ", j_max, " iterations:", sep='')
+      print(str)
+      print(self$analysis$metropolis_records[j_max,]) 
+      
+      # produce best_likelihood fitted graph
+      self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
+                                      gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max] ,mu = self$analysis$mu, from_mcmc=TRUE) 
       
       # print some stats
       str = paste("MCMC acceptance ratio: ", round(100*sum(self$analysis$metropolis_records$accepted)/nrow(self$analysis$metropolis_records)) ,' %', sep='')
