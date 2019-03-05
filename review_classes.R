@@ -106,7 +106,6 @@ Cohort <- R6Class(
       # determine an alpha between 0.5 and 1
       # 0.5 for the oldest times (1905), 1 for the most recent (1940) 
       alpha = (mean(self$year_range) - 1905)/35
-      print(alpha)
       add.alpha(color[[self$author]], alpha)      
     }
   )
@@ -151,15 +150,17 @@ Analysis <- R6Class(
           P_t_start_1 = exp(-(gamma + mu + mu_t)*data_item$t_start)
           # proba of being in state 2 (recovered) at time t_start 
           P_t_start_2 = (gamma / (gamma + mu_t)) * (exp(-mu*data_item$t_start) - exp(-(gamma + mu + mu_t)*data_item$t_start))
-        
+          
+          
           # evaluate vector (1, 0, 0) times exponetial of matrix Q (delta_t) times vector (0 0 1)
-          A = 1 - (gamma / (gamma + mu_t)) * exp(-mu * data_item$delta_t) - mu_t * exp(-(gamma + mu + mu_t) * data_item$delta_t)   
+          A = 1 - (gamma / (gamma + mu_t)) * exp(-mu * data_item$delta_t) - (mu_t/(gamma + mu_t) )* exp(-(gamma + mu + mu_t) * data_item$delta_t)   
             
           # evaluate vector (0, 1, 0) times exponetial of matrix Q (delta_t) times vector (0 0 1)
           B = 1 - exp(-mu * data_item$delta_t)
           
           # combine the different components:
           p = (P_t_start_1 * A + P_t_start_2 * B) / (P_t_start_1 + P_t_start_2)
+          
           detach(params)
         }
         return(p)
@@ -175,8 +176,10 @@ Analysis <- R6Class(
         pseudo_ll = 0
         for (j in 1:nrow(self$all_data)){
           if (self$all_data$smear_status[j] %in% smear_status){
+            
             # evaluate the probability of death between t_k and t_k+1
             p = self$get_individual_death_proba(self$all_data[j,], model, params)
+            
             if (p==0){
               print("Warning: death probability is 0")
             }
@@ -329,7 +332,7 @@ Analysis <- R6Class(
         }
         return(square_dist)
       },
-      square_dist_model_to_all_data = function(mu, mu_t, gamma, kappa=NA, alpha=NA, smear_status='positive', model=1){
+      square_dist_model_to_all_data = function(mu, mu_t, gamma, kappa=NA, alpha=NA, smear_status=c('positive'), model=1){
         square_dist = 0
         for (cohort in self$cohorts){
           if (cohort$smear_status %in% smear_status){
@@ -339,13 +342,12 @@ Analysis <- R6Class(
         }
         return(square_dist)
       },
-      optimise_fit = function(mu=1/55, smear_status='positive', model=1){
-        
+      optimise_fit = function(mu=1/55, smear_status=c('positive'), model=1){
         if (model == 1){
           fun_to_minimise = function(params){
             mu_t = params[1]
             gamma = params[2]
-            dist = self$square_dist_model_to_all_data(mu,mu_t,gamma,smear_status,model = 1)
+            dist = self$square_dist_model_to_all_data(mu,mu_t,gamma,smear_status=smear_status,model = 1)
             return(dist)
           }  
           par_0 = c(0.23, 0.1)  # initial guess for mu_t and gamma
