@@ -168,22 +168,19 @@ Analysis <- R6Class(
           
           # combine the different components:
           p = (P_t_start_1 * A + P_t_start_2 * B) / (P_t_start_1 + P_t_start_2)
-          
           detach(params)
         }else if(model == 2){
           attach(params)
           # proba of being in state 1 (active TB early) at time t_start 
           P_t_start_1 = exp(-(gamma + mu + mu_t + kappa)*data_item$t_start)
-          
           # proba of being in state 2 (active TB late) at time t_start 
           P_t_start_2 = (kappa/(kappa+(1-alpha)*mu_t)) * (exp(-(gamma + mu + alpha*mu_t)*data_item$t_start) - exp(-(gamma+kappa+mu+mu_t)*data_item$t_start))
-          
           # proba of being in state 3 (Recovered) at time t_start
           deno = (gamma+kappa+mu_t) * (kappa+(1-alpha)*mu_t) * (gamma+alpha*mu_t)
           cste = gamma/deno
           num_1 = -kappa*(gamma+kappa+mu_t)*exp(-(gamma+mu+alpha*mu_t)*data_item$t_start)
           num_2 = mu_t*(alpha-1)*(gamma+alpha*mu_t)*exp(-(gamma+kappa+mu+mu_t)*data_item$t_start)
-          num_3 = (kappa+(1-alpha)*mu_t)*(gamma+kappa+alpha*mu_t)*exp(data_item$t_start)
+          num_3 = (kappa+(1-alpha)*mu_t)*(gamma+kappa+alpha*mu_t)*exp(-mu*data_item$t_start)
           P_t_start_3 = cste * (num_1 + num_2 + num_3)
           
           #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -191,7 +188,7 @@ Analysis <- R6Class(
           bloc1 = (1-alpha)*mu_t*(kappa+mu_t) / ((gamma+kappa+mu_t)*(kappa+(1-alpha)*mu_t))
           bloc2 = alpha*kappa*mu_t / ((kappa+(1-alpha)*mu_t)*(gamma+alpha*mu_t))
           bloc3 = gamma*(gamma+kappa+alpha*mu_t) / ((gamma+kappa+mu_t)*(gamma+alpha*mu_t))
-          A = 1 - bloc1*exp(-(gamma+kappa+mu+mu_t)*data_item$delta_t) - bloc2*exp(-(gamma+mu+alpha*mu_t)*data_item$delta_t) - bloc3*exp(-mu_t*data_item$delta_t)
+          A = 1 - bloc1*exp(-(gamma+kappa+mu+mu_t)*data_item$delta_t) - bloc2*exp(-(gamma+mu+alpha*mu_t)*data_item$delta_t) - bloc3*exp(-mu*data_item$delta_t)
           
           # evaluate vector (0, 1, 0, 0) times exponetial of matrix Q (delta_t) times vector (0 0 0 1)
           B = (gamma*(1-exp(-mu*data_item$delta_t)) + alpha*mu_t*(1-exp(-(gamma+mu+alpha*mu_t)*data_item$delta_t))) / (gamma+alpha*mu_t)
