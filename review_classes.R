@@ -120,7 +120,7 @@ Analysis <- R6Class(
       all_data = NULL,
       proposal_sd = list(
         list('gamma'=0.01, 'mu_t'=0.01),  # model 1
-        list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=1.0, 'alpha'= 1.0)  # model 2
+        list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=0.01, 'alpha'= 0.01)  # model 2
         ),
       mu = 1/55,
       metropolis_records = NULL,
@@ -172,9 +172,36 @@ Analysis <- R6Class(
           detach(params)
         }else if(model == 2){
           attach(params)
+          # proba of being in state 1 (active TB early) at time t_start 
+          P_t_start_1 = exp(-(gamma + mu + mu_t + kappa)*data_item$t_start)
           
+          # proba of being in state 2 (active TB late) at time t_start 
+          P_t_start_2 = (kappa/(kappa+(1-alpha)*mu_t)) * (exp(-(gamma + mu + alpha*mu_t)*data_item$t_start) - exp(-(gamma+kappa+mu+mu_t)*data_item$t_start))
           
+          # proba of being in state 3 (Recovered) at time t_start
+          deno = (gamma+kappa+mu_t) * (kappa+(1-alpha)*mu_t) * (gamma+alpha*mu_t)
+          cste = gamma/deno
+          num_1 = -kappa*(gamma+kappa+mu_t)*exp(-(gamma+mu+alpha*mu_t)*data_item$t_start)
+          num_2 = mu_t*(alpha-1)*(gamma+alpha*mu_t)*exp(-(gamma+kappa+mu+mu_t)*data_item$t_start)
+          num_3 = (kappa+(1-alpha)*mu_t)*(gamma+kappa+alpha*mu_t)*exp(data_item$t_start)
+          P_t_start_3 = cste * (num_1 + num_2 + num_3)
           
+          #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+          # evaluate vector (1, 0, 0, 0) times exponetial of matrix Q (delta_t) times vector (0 0 0 1)
+          bloc1 = (1-alpha)*mu_t*(kappa+mu_t) / ((gamma+kappa+mu_t)*(kappa+(1-alpha)*mu_t))
+          bloc2 = alpha*kappa*mu_t / ((kappa+(1-alpha)*mu_t)*(gamma+alpha*mu_t))
+          bloc3 = gamma*(gamma+kappa+alpha*mu_t) / ((gamma+kappa+mu_t)*(gamma+alpha*mu_t))
+          A = 1 - bloc1*exp(-(gamma+kappa+mu+mu_t)*data_item$delta_t) - bloc2*exp(-(gamma+mu+alpha*mu_t)*data_item$delta_t) - bloc3*exp(-mu_t*data_item$delta_t)
+          
+          # evaluate vector (0, 1, 0, 0) times exponetial of matrix Q (delta_t) times vector (0 0 0 1)
+          B = (gamma*(1-exp(-mu*data_item$delta_t)) + alpha*mu_t*(1-exp(-(gamma+mu+alpha*mu_t)*data_item$delta_t))) / (gamma+alpha*mu_t)
+          
+          # evaluate vector (0, 0, 1, 0) times exponetial of matrix Q (delta_t) times vector (0 0 0 1)
+          C = 1 - exp(-mu*data_item$delta_t)
+          
+          #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+          # final calculation
+          p = (P_t_start_1 * A + P_t_start_2 * B + P_t_start_3 * C) / (P_t_start_1 + P_t_start_2 + P_t_start_3)
           detach(params)
         }else{
           print('Model not supported')
@@ -240,11 +267,11 @@ Analysis <- R6Class(
                                                'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
         
           current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'mu'=self$mu)# initial guess
-        }else if (model == 1){
+        }else if (model == 2){
           self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations), 'kappa'=double(n_iterations), 'alpha'=double(n_iterations),
                                                'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
           
-          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'kappa'=1.0, 'alpha'=1.0, 'mu'=self$mu)  # initial guess
+          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'kappa'=1.0, 'alpha'=0.5, 'mu'=self$mu)  # initial guess
         }else{
           print("Model not supported in MCMC for the moment.")
         }
@@ -271,6 +298,10 @@ Analysis <- R6Class(
               accepted = 0
               break
             } 
+            if (par == 'alpha' && candidate_param_vals[[par]] > 1){
+              accepted = 0
+              break
+            }
           }
           
           # if proposed parameter values are acceptable
@@ -385,7 +416,8 @@ Analysis <- R6Class(
           filename = paste(filename, "with_model", model, sep="_")
         }
         if (from_mcmc){
-          filename = "outputs/mcmc/best_fit_to_data"
+          folder_name = paste('outputs/mcmc/Model',model,'/',sep='')
+          filename= paste(folder_name, 'best_fit_to_data', sep='')
         }
         open_figure(filename, 'png', w=12, h=9)
         plot(0,0,xlim=c(0,xmax), ylim=c(0,100), xlab='time (years)',
@@ -505,7 +537,9 @@ Outputs <- R6Class(
     produce_mcmc_outputs = function(model, smear_status=c('positive')){
       
       # parameter values and log likelihhod over iterations
-      filename = 'outputs/mcmc/parameter_progression'
+      folder_name = paste('outputs/mcmc/Model',model,'/',sep='')
+                          
+      filename= paste(folder_name, 'parameter_progression', sep='')
       open_figure(filename, 'png', w=12, h=9)
       n_params = length(self$analysis$proposal_sd[[model]])
       par(mfrow=c(n_params+1,1))
@@ -544,7 +578,7 @@ Outputs <- R6Class(
       
       # posterior distributions (marginal)
       for (par in names(self$analysis$proposal_sd[[model]])){
-        filename = paste('outputs/mcmc/histogram_', par, sep='')
+        filename= paste(folder_name, 'histogram_' ,par, sep='')
         open_figure(filename, 'png', w=12, h=9)
         hist(self$true_mcmc_outputs[[par]],breaks=20,xlab=par,main='')
         dev.off()
@@ -557,7 +591,7 @@ Outputs <- R6Class(
         for (j in (i+1):length(params)){
           par1 = params[i]
           par2 = params[j]
-          filename = paste('outputs/mcmc/joint_scatter_', par1, '_', par2, sep='')
+          filename= paste(folder_name, 'joint_scatter_', par1, '_', par2, sep='')
           open_figure(filename, 'png', w=12, h=9)
           plot(self$true_mcmc_outputs[[par1]], self$true_mcmc_outputs[[par2]], pch=19, xlab=par1, ylab=par2)
           dev.off()
@@ -585,10 +619,10 @@ Outputs <- R6Class(
       # ACF graphs
       # parameter values and log likelihhod over iterations
       for (par in names(self$analysis$proposal_sd[[model]])){
-        filename = paste('outputs/mcmc/correlogram_',par,sep='')
+        filename= paste(folder_name, 'correlogram_' ,par, sep='')
         open_figure(filename, 'png', w=12, h=9)
-        plot <- ggAcf(x = self$true_mcmc_outputs[[par]], lag.max = 20, type='correlation',title=par)
-        print(plot)
+        # plot <- ggAcf(x = self$true_mcmc_outputs[[par]], lag.max = 20, type='correlation',title=par)
+        # print(plot)
         dev.off()
       }
       
