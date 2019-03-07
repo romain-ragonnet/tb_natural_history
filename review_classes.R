@@ -295,10 +295,6 @@ Analysis <- R6Class(
               accepted = 0
               break
             } 
-            if (par == 'alpha' && candidate_param_vals[[par]] > 1){
-              accepted = 0
-              break
-            }
           }
           
           # if proposed parameter values are acceptable
