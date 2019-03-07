@@ -326,7 +326,7 @@ analysis$add_cohort(author = 'Sinding-Larsen',
 
 
 #_____________________________________________________________
-#  Furth (from Berg, Table 3)
+#  Furth smear-pos (from Berg, Table 3)
 analysis$add_cohort(author = 'Furth',
                     smear_status = 'positive',
                     cohort_name = '12_15',
@@ -358,6 +358,41 @@ analysis$add_cohort(author = 'Furth',
 )
 
 
+#_____________________________________________________________
+#   Furth smear-neg from Furth Table 5
+data = list('1912'=c(0,0,0,0,0,0,0,0,0,0,0,1,0,0,0),
+            '1913'=c(0,2,0,1,2,0,1,2,0,0,2,0,0,0,1),
+            '1914'=c(1,1,3,2,1,0,1,1,1,1,1,0,1,0,1),
+            '1915'=c(0,3,2,2,1,5,1,0,1,0),
+            '1916'=c(0,0,0,1,1,0,0,0,0,0),
+            '1917'=c(1,2,1,1,1,0,0,0,0,0),
+            '1918'=c(0,4,1,1,1,0,0,1,0,1),
+            '1919'=c(0,2,1,1,1,0,2,0,1,0),
+            '1920'=c(0,0,0,0,0),
+            '1921'=c(0,1,0,2,0),
+            '1922'=c(1,1,4,0,0),
+            '1923'=c(1,1,0,3,0),
+            '1924'=c(0,1,1,1,0)
+            )
+n = list('1912'=8, '1913'=36, '1914'=39, '1915'=39, '1916'=28, '1917'=38, '1918'=41, '1919'=37, '1920'=55, '1921'=36, '1922'=45, '1923'=33, '1924'=34)
+
+get_perc_death_for_furth = function(year){
+  cum_death = cumsum(data[[year]])
+  perc_death = (100/n[[year]])*cum_death
+  return(perc_death)
+}
+
+for (year in 1912:1924){
+  analysis$add_cohort(author = 'Furth',
+                      smear_status = 'negative',
+                      cohort_name = as.character(year),
+                      year_range = c(year, year+1),
+                      cohort_size = n[[as.character(year)]],
+                      times = 1:length(data[[as.character(year)]]),
+                      perc_death = get_perc_death_for_furth(as.character(year)),
+                      perc_alive = NULL
+  )
+}
 #_____________________________________________________________
 #  Berg (Using Nico's spreadsheet)
 
