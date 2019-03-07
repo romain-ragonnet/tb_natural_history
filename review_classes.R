@@ -100,7 +100,7 @@ Cohort <- R6Class(
         "Backer" = my_grey,
         "Trail" = 'blue',
         "Sinding-Larsen" = 'purple',
-        "Furth" = 'green',
+        "Furth" = 'darkgreen',
         "Berg" = 'yellow',
         "Munchbach" = "orange"
       )
@@ -118,7 +118,10 @@ Analysis <- R6Class(
       cohorts = c(),
       n_cohorts = 0,
       all_data = NULL,
-      proposal_sd = list('gamma'=0.01, 'mu_t'=0.01),
+      proposal_sd = list(
+        list('gamma'=0.01, 'mu_t'=0.01),  # model 1
+        list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=1.0, 'alpha'= 1.0)  # model 2
+        ),
       mu = 1/55,
       metropolis_records = NULL,
       burned_iterations = 0,
@@ -167,6 +170,14 @@ Analysis <- R6Class(
           p = (P_t_start_1 * A + P_t_start_2 * B) / (P_t_start_1 + P_t_start_2)
           
           detach(params)
+        }else if(model == 2){
+          attach(params)
+          
+          
+          
+          detach(params)
+        }else{
+          print('Model not supported')
         }
         return(p)
         
@@ -200,12 +211,12 @@ Analysis <- R6Class(
         return(log_prior)
       },
 
-      proposal_function = function(current_param_vals){
+      proposal_function = function(model,current_param_vals){
         # current_param_vals is a list keyed with the names of the params and valued with their current values
         proposed_param_vals = current_param_vals
         for (par in names(current_param_vals)){
           if (par != 'mu'){
-            proposed_param_vals[[par]] = rnorm(1,mean = current_param_vals[[par]],sd = self$proposal_sd[[par]])
+            proposed_param_vals[[par]] = rnorm(1,mean = current_param_vals[[par]],sd = self$proposal_sd[[model]][[par]])
           }
         }
         return(proposed_param_vals)
@@ -225,10 +236,15 @@ Analysis <- R6Class(
         # Runs Metropolis algorithm for n_iterations
         self$burned_iterations = n_burned
         if (model == 1){
-          self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations), 'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
+          self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations),
+                                               'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
         
-          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'mu'=self$mu)
+          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'mu'=self$mu)# initial guess
+        }else if (model == 1){
+          self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations), 'kappa'=double(n_iterations), 'alpha'=double(n_iterations),
+                                               'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
           
+          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'kappa'=1.0, 'alpha'=1.0, 'mu'=self$mu)  # initial guess
         }else{
           print("Model not supported in MCMC for the moment.")
         }
@@ -247,11 +263,11 @@ Analysis <- R6Class(
           accepted = 1    #may change later on
           
           # new candidate parameter values
-          candidate_param_vals = self$proposal_function(current_param_vals)
+          candidate_param_vals = self$proposal_function(model,current_param_vals)
           
           # test for negative values
           for (par in names(candidate_param_vals)){
-            if (candidate_param_vals[[par]] < 0){
+            if (candidate_param_vals[[par]] <= 0){
               accepted = 0
               break
             } 
@@ -491,11 +507,11 @@ Outputs <- R6Class(
       # parameter values and log likelihhod over iterations
       filename = 'outputs/mcmc/parameter_progression'
       open_figure(filename, 'png', w=12, h=9)
-      n_params = length(self$analysis$proposal_sd)
+      n_params = length(self$analysis$proposal_sd[[model]])
       par(mfrow=c(n_params+1,1))
       colour_list = c('black', 'red')  # black for rejected / red for accepted
       colours = colour_list[self$analysis$metropolis_records$accepted + 1]
-      for (par in names(self$analysis$proposal_sd)){
+      for (par in names(self$analysis$proposal_sd[[model]])){
         plot(self$analysis$metropolis_records[[par]], pch=19,xlab='iteration',ylab=par, col=colours)  
         lines(self$analysis$metropolis_records[[par]])
         if (self$analysis$burned_iterations > 0){
@@ -527,7 +543,7 @@ Outputs <- R6Class(
       
       
       # posterior distributions (marginal)
-      for (par in names(self$analysis$proposal_sd)){
+      for (par in names(self$analysis$proposal_sd[[model]])){
         filename = paste('outputs/mcmc/histogram_', par, sep='')
         open_figure(filename, 'png', w=12, h=9)
         hist(self$true_mcmc_outputs[[par]],breaks=20,xlab=par,main='')
@@ -536,7 +552,7 @@ Outputs <- R6Class(
       
       # joined posterior distribution
       # -> dotted
-      params = names(self$analysis$proposal_sd)
+      params = names(self$analysis$proposal_sd[[model]])
       for (i in 1:(length(params)-1)){
         for (j in (i+1):length(params)){
           par1 = params[i]
@@ -555,12 +571,20 @@ Outputs <- R6Class(
       print(self$analysis$metropolis_records[j_max,]) 
       
       # produce best_likelihood fitted graph
-      self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
-                                      gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max] ,mu = self$analysis$mu, from_mcmc=TRUE) 
+      if (model==1){
+        self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
+                                        gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max],
+                                        mu = self$analysis$mu, from_mcmc=TRUE) 
+      }else if(model==2){
+        self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
+                                        gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max],
+                                        kappa =self$analysis$metropolis_records$kappa[j_max], alpha =self$analysis$metropolis_records$alpha[j_max],
+                                        mu = self$analysis$mu, from_mcmc=TRUE)
+      }
       
       # ACF graphs
       # parameter values and log likelihhod over iterations
-      for (par in names(self$analysis$proposal_sd)){
+      for (par in names(self$analysis$proposal_sd[[model]])){
         filename = paste('outputs/mcmc/correlogram_',par,sep='')
         open_figure(filename, 'png', w=12, h=9)
         plot <- ggAcf(x = self$true_mcmc_outputs[[par]], lag.max = 20, type='correlation',title=par)
