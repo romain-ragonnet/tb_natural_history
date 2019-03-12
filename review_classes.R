@@ -123,8 +123,8 @@ Analysis <- R6Class(
       all_data = NULL,
       param_bases = c(), #  e.g. c('gamma', 'mu_t') for Model 1
       mcmc_param_list = c(), #  e.g. c('gamma_1', 'gamma_2'..., 'mu_t_1',...) for Model 1
-      initial_params = list('gamma'=0.1, 'mu_t'=0.1, 'kappa'=1.0, 'alpha'= 0.5, 'lambda'=log(0.2)-0.5, 'sigma'=1.0),  
-      proposal_sd = list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=0.01, 'alpha'= 0.02, 'lambda'=0.05, 'sigma'=0.05),  
+      initial_params = list('gamma'=0.1, 'mu_t'=0.1, 'kappa'=1.0, 'alpha'= 0.5, 'lambda_mu_t'=log(0.2)-0.5, 'sigma_mu_t'=1.0,'lambda_gamma'=log(0.2)-0.5, 'sigma_gamma'=1.0),  
+      proposal_sd = list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=0.01, 'alpha'= 0.02, 'lambda_mu_t'=0.05, 'sigma_mu_t'=0.05,'lambda_gamma'=0.05, 'sigma_gamma'=0.05),  
       mu = 1/40,
       metropolis_records = NULL,
       burned_iterations = 0,
@@ -236,7 +236,10 @@ Analysis <- R6Class(
                 params_to_evaluate[[param_base]] = params[[true_param_name]]
               }
               p = self$get_individual_death_proba(self$all_data[j,], model, params_to_evaluate)
+              # binomial component of the likelihood
               pseudo_ll = pseudo_ll + y_k * log(p) + (n_k - y_k) * log(1 - p)  # provi for testing
+              # add the contribution of the distribution linking all parameters together
+              
             }
           }
         }
@@ -286,9 +289,12 @@ Analysis <- R6Class(
           
         }
         else{
-          self$metropolis_records$lambda = rep(0.,n_iterations)
-          self$metropolis_records$sigma = rep(0.,n_iterations)
-          self$mcmc_param_list = c('lambda', 'sigma')
+          self$metropolis_records$lambda_mu_t = rep(0.,n_iterations)
+          self$metropolis_records$sigma_mu_t = rep(0.,n_iterations)
+          self$metropolis_records$lambda_gamma = rep(0.,n_iterations)
+          self$metropolis_records$sigma_gamma = rep(0.,n_iterations)
+          
+          self$mcmc_param_list = c('lambda_mu_t', 'sigma_mu_t','lambda_gamma', 'sigma_gamma' )
           
           self$cohort_ids = c()
           for (coh in self$cohorts){
@@ -331,9 +337,13 @@ Analysis <- R6Class(
           
           # test for negative values
           for (par in names(candidate_param_vals)){
-            if (candidate_param_vals[[par]] <= 0 && par != 'lambda'){
-              accepted = 0
-              break
+            if (candidate_param_vals[[par]] <= 0){
+              if ('lambda' %in% par){
+                
+              }else{
+                accepted = 0
+                break
+              }
             } 
           }
           
@@ -687,13 +697,36 @@ Outputs <- R6Class(
           # print(plot)
           dev.off()
         }
+      }else{
+        self$produce_mcmc_random_effect_graphs(model)
       }
-      
-      
       
       # print some stats
       str = paste("MCMC acceptance ratio: ", round(100*sum(self$analysis$metropolis_records$accepted)/nrow(self$analysis$metropolis_records)) ,' %', sep='')
       print(str)
+    },
+    
+    produce_mcmc_random_effect_graphs = function(model){
+      folder_name = paste('outputs/mcmc/Model',model,'/',sep='')
+      
+      print("@@@@@@@")
+      for (par_base in self$analysis$param_bases){
+        filename= paste(folder_name, 'results_by_cohort_' ,par_base, sep='')
+        open_figure(filename, 'png', w=12, h=length(self$analysis$cohort_ids))
+        
+        plot(0,0,type='n',main='',xlab=par_base,xlim=c(0,0.5),ylim=c(0,length(self$analysis$cohort_ids)))
+        
+        h = 0
+        for (i in self$analysis$cohort_ids){
+          h = h+1
+          par = paste(par_base,"#",i,sep='')
+          x = self$true_mcmc_outputs[[par]]
+          qt = quantile(x,c(0.025,0.5,0.975),names = FALSE)
+          lines(x = c(qt[1], qt[3]), y=c(h,h))
+          points(x=qt[2], y=h)
+        }
+        dev.off()
+      }
     }
   )
 )
