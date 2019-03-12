@@ -1,6 +1,9 @@
 library(R6)
-library(forecast)
 source('G:/My Drive/R_toolkit/graph_tools.R')
+
+get_param_base <- function(param){
+  return(strsplit(param,'#')[[1]][1])
+}
 
 Cohort <- R6Class(
   "Cohort",
@@ -118,13 +121,14 @@ Analysis <- R6Class(
       cohorts = c(),
       n_cohorts = 0,
       all_data = NULL,
-      proposal_sd = list(
-        list('gamma'=0.01, 'mu_t'=0.01),  # model 1
-        list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=0.01, 'alpha'= 0.01)  # model 2
-        ),
-      mu = 1/55,
+      param_bases = c(), #  e.g. c('gamma', 'mu_t') for Model 1
+      mcmc_param_list = c(), #  e.g. c('gamma_1', 'gamma_2'..., 'mu_t_1',...) for Model 1
+      initial_params = list('gamma'=0.1, 'mu_t'=0.1, 'kappa'=1.0, 'alpha'= 0.5, 'lambda'=log(0.2)-0.5, 'sigma'=1.0),  
+      proposal_sd = list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=0.01, 'alpha'= 0.02, 'lambda'=0.05, 'sigma'=0.05),  
+      mu = 1/40,
       metropolis_records = NULL,
       burned_iterations = 0,
+      cohort_ids = c(),
      
       add_cohort = function(author, smear_status, cohort_name, year_range,
                             cohort_size, times, perc_death, perc_alive){
@@ -133,6 +137,8 @@ Analysis <- R6Class(
                             cohort_size, times, perc_death, perc_alive)
         self$cohorts = c(self$cohorts, cohort)
         self$n_cohorts = cohort_id
+        str=paste("Cohort ", cohort_id, ' / size: ', cohort_size, ' / author: ', author, sep='')
+        # print(str)
       },
      
       produce_main_dataframe = function(){
@@ -207,7 +213,7 @@ Analysis <- R6Class(
         
       },
       
-      evaluate_pseudo_loglikelihood = function(model, params, smear_status=c('positive')){
+      evaluate_pseudo_loglikelihood = function(model, params, smear_status=c('positive'),random_effects){
         # returns the variable component of the log-likelihood function.
         # we do not need the true log-likelihood for the MCMC algorithm.
         # model is one of {1, 2}
@@ -215,24 +221,26 @@ Analysis <- R6Class(
         pseudo_ll = 0
         for (j in 1:nrow(self$all_data)){
           if (self$all_data$smear_status[j] %in% smear_status){
-            
-            # evaluate the probability of death between t_k and t_k+1
-            p = self$get_individual_death_proba(self$all_data[j,], model, params)
-            
-            if (p==0){
-              print("Warning: death probability is 0")
-            }
             y_k = self$all_data$n_new_deaths[j]
             n_k = self$all_data$n_at_risk[j]
-            pseudo_ll = pseudo_ll + y_k * log(p) + (n_k - y_k) * log(1 - p)
+            
+            # evaluate the probability of death between t_k and t_k+1
+            if (!random_effects){
+              p = self$get_individual_death_proba(self$all_data[j,], model, params)
+              pseudo_ll = pseudo_ll + y_k * log(p) + (n_k - y_k) * log(1 - p)
+            }else{
+              params_to_evaluate = list()
+              params_to_evaluate$mu = params$mu
+              for (param_base in self$param_bases){
+                true_param_name = paste(param_base,'#',self$all_data$cohort_id[j],sep='')
+                params_to_evaluate[[param_base]] = params[[true_param_name]]
+              }
+              p = self$get_individual_death_proba(self$all_data[j,], model, params_to_evaluate)
+              pseudo_ll = pseudo_ll + y_k * log(p) + (n_k - y_k) * log(1 - p)  # provi for testing
+            }
           }
         }
         return(pseudo_ll)
-      },
-
-      evaluate_log_priors = function(model, params, smear_status=c('positive')){
-        log_prior = 0
-        return(log_prior)
       },
 
       proposal_function = function(model,current_param_vals){
@@ -240,7 +248,8 @@ Analysis <- R6Class(
         proposed_param_vals = current_param_vals
         for (par in names(current_param_vals)){
           if (par != 'mu'){
-            proposed_param_vals[[par]] = rnorm(1,mean = current_param_vals[[par]],sd = self$proposal_sd[[model]][[par]])
+            par_base = get_param_base(par)
+            proposed_param_vals[[par]] = rnorm(1,mean = current_param_vals[[par]],sd = self$proposal_sd[[par_base]])
           }
         }
         return(proposed_param_vals)
@@ -256,24 +265,55 @@ Analysis <- R6Class(
         self$metropolis_records$accepted[index] = accepted
       },
       
-      run_metropolis = function(model,n_iterations, n_burned, smear_status=c('positive')){
+      run_metropolis = function(model,n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE){
         # Runs Metropolis algorithm for n_iterations
         self$burned_iterations = n_burned
+        self$metropolis_records = data.frame('pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
         if (model == 1){
-          self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations),
-                                               'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
-        
-          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'mu'=self$mu)# initial guess
-        }else if (model == 2){
-          self$metropolis_records = data.frame('gamma'=double(n_iterations), 'mu_t'=double(n_iterations), 'kappa'=double(n_iterations), 'alpha'=double(n_iterations),
-                                               'pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
-          
-          current_param_vals = list('gamma'=0.1, 'mu_t'=0.1, 'kappa'=1.0, 'alpha'=0.5, 'mu'=self$mu)  # initial guess
+          self$param_bases = c('gamma', 'mu_t')
+        }else if(model==2){
+          self$param_bases = c('gamma', 'mu_t', 'kappa', 'alpha')
         }else{
           print("Model not supported in MCMC for the moment.")
         }
         
-        current_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model, params=current_param_vals, smear_status=smear_status)
+        if (!random_effects){
+          self$mcmc_param_list = self$param_bases
+          for (param_base in self$param_bases){
+            self$metropolis_records[[param_base]]=rep(0.,n_iterations)
+          }
+          self$mcmc_param_list = c(self$mcmc_param_list, 'mu')
+          
+        }
+        else{
+          self$metropolis_records$lambda = rep(0.,n_iterations)
+          self$metropolis_records$sigma = rep(0.,n_iterations)
+          self$mcmc_param_list = c('lambda', 'sigma')
+          
+          self$cohort_ids = c()
+          for (coh in self$cohorts){
+            if (coh$smear_status %in% smear_status){
+              self$cohort_ids = c(self$cohort_ids, coh$id)
+            }
+          }
+          for (param_base in self$param_bases){
+            for (cohort_id in self$cohort_ids){
+              new_param = paste(param_base,'#',cohort_id,sep='')
+              self$metropolis_records[[new_param]]=rep(0.,n_iterations)
+              self$mcmc_param_list = c(self$mcmc_param_list, new_param)
+            }
+          }
+          self$mcmc_param_list = c(self$mcmc_param_list, 'mu')
+        }
+        
+        current_param_vals = list()
+        for (param in self$mcmc_param_list){
+          param_base = get_param_base(param)
+          current_param_vals[[param]] = self$initial_params[[param_base]]
+        }
+        current_param_vals$mu = self$mu
+          
+        current_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model, params=current_param_vals, smear_status=smear_status, random_effects=random_effects)
         
         self$store_mcmc_iteration(proposed_param_vals=current_param_vals, pseudo_ll=current_pseudo_ll, accepted=1, index=1)
         last_print_j = 0
@@ -291,7 +331,7 @@ Analysis <- R6Class(
           
           # test for negative values
           for (par in names(candidate_param_vals)){
-            if (candidate_param_vals[[par]] <= 0){
+            if (candidate_param_vals[[par]] <= 0 && par != 'lambda'){
               accepted = 0
               break
             } 
@@ -299,7 +339,7 @@ Analysis <- R6Class(
           
           # if proposed parameter values are acceptable
           if (accepted == 1){
-            candidate_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model,params=candidate_param_vals, smear_status=smear_status)
+            candidate_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model,params=candidate_param_vals, smear_status=smear_status,random_effects=random_effects)
             
             # decide acceptance
             if (candidate_pseudo_ll >= current_pseudo_ll){
@@ -424,12 +464,17 @@ Analysis <- R6Class(
         }
         if (plot_model){
           t = seq(0,30,by=0.01)
-          if (model == 1){
-            death = self$death_proportion_model_1(t=t, mu=mu, mu_t=mu_t, gamma=gamma)
-          }else if (model == 2){
-            death = self$death_proportion_model_2(t=t, mu=mu, mu_t=mu_t, gamma=gamma,kappa=kappa, alpha=alpha)
+          lwd = 4
+          if (length(gamma)>1){ldw=0.2}
+          for (j in 1:length(gamma)){
+            if (model == 1){
+              death = self$death_proportion_model_1(t=t, mu=mu, mu_t=mu_t[j], gamma=gamma[j])
+            }else if (model == 2){
+              death = self$death_proportion_model_2(t=t, mu=mu, mu_t=mu_t[j], gamma=gamma[j],kappa=kappa[j], alpha=alpha[j])
+            }
+            lines(t, 100*death, col='black', lwd=lwd)
           }
-          lines(t, 100*death, col='black', lwd=4)
+         
         }
         dev.off()
       },
@@ -527,22 +572,24 @@ Outputs <- R6Class(
       self$analysis = analysis 
     },
     
-    produce_mcmc_outputs = function(model, smear_status=c('positive')){
+    produce_mcmc_outputs = function(model, smear_status=c('positive'), random_effects){
       
       # parameter values and log likelihhod over iterations
       folder_name = paste('outputs/mcmc/Model',model,'/',sep='')
                           
       filename= paste(folder_name, 'parameter_progression', sep='')
-      open_figure(filename, 'png', w=12, h=9)
-      n_params = length(self$analysis$proposal_sd[[model]])
+      n_params = length(self$analysis$mcmc_param_list) - 1 # -1 because of mu
+      open_figure(filename, 'png', w=12, h=3*n_params)
       par(mfrow=c(n_params+1,1))
       colour_list = c('black', 'red')  # black for rejected / red for accepted
       colours = colour_list[self$analysis$metropolis_records$accepted + 1]
-      for (par in names(self$analysis$proposal_sd[[model]])){
-        plot(self$analysis$metropolis_records[[par]], pch=19,xlab='iteration',ylab=par, col=colours)  
-        lines(self$analysis$metropolis_records[[par]])
-        if (self$analysis$burned_iterations > 0){
-          abline(v=self$analysis$burned_iterations, lty=2)
+      for (par in self$analysis$mcmc_param_list){
+        if (par != 'mu'){
+          plot(self$analysis$metropolis_records[[par]], pch=19,xlab='iteration',ylab=par, col=colours)  
+          lines(self$analysis$metropolis_records[[par]])
+          if (self$analysis$burned_iterations > 0){
+            abline(v=self$analysis$burned_iterations, lty=2)
+          }
         }
       }
       plot(self$analysis$metropolis_records$pseudo_ll, pch=19,xlab='iteration',ylab='pseudo log-likelihood', col=colours)  
@@ -570,26 +617,16 @@ Outputs <- R6Class(
       
       
       # posterior distributions (marginal)
-      for (par in names(self$analysis$proposal_sd[[model]])){
-        filename= paste(folder_name, 'histogram_' ,par, sep='')
-        open_figure(filename, 'png', w=12, h=9)
-        hist(self$true_mcmc_outputs[[par]],breaks=20,xlab=par,main='')
-        dev.off()
-      }
-      
-      # joined posterior distribution
-      # -> dotted
-      params = names(self$analysis$proposal_sd[[model]])
-      for (i in 1:(length(params)-1)){
-        for (j in (i+1):length(params)){
-          par1 = params[i]
-          par2 = params[j]
-          filename= paste(folder_name, 'joint_scatter_', par1, '_', par2, sep='')
+      for (par in self$analysis$mcmc_param_list){
+        if (par != 'mu'){
+          filename= paste(folder_name, 'histogram_' ,par, sep='')
           open_figure(filename, 'png', w=12, h=9)
-          plot(self$true_mcmc_outputs[[par1]], self$true_mcmc_outputs[[par2]], pch=19, xlab=par1, ylab=par2)
+          hist(self$true_mcmc_outputs[[par]],breaks=20,xlab=par,main='')
           dev.off()
         }
       }
+      
+      
             
       # maximum-likelihood estimates
       j_max = which.max(self$analysis$metropolis_records$pseudo_ll)
@@ -597,27 +634,62 @@ Outputs <- R6Class(
       print(str)
       print(self$analysis$metropolis_records[j_max,]) 
       
-      # produce best_likelihood fitted graph
-      if (model==1){
-        self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
-                                        gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max],
-                                        mu = self$analysis$mu, from_mcmc=TRUE) 
-      }else if(model==2){
-        self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
-                                        gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max],
-                                        kappa =self$analysis$metropolis_records$kappa[j_max], alpha =self$analysis$metropolis_records$alpha[j_max],
-                                        mu = self$analysis$mu, from_mcmc=TRUE)
+      if (!random_effects){
+        # joined posterior distribution
+        # -> dotted
+        params = self$analysis$mcmc_param_list
+        params = params[params!='mu']
+        for (i in 1:(length(params)-1)){
+          for (j in (i+1):length(params)){
+            par1 = params[i]
+            par2 = params[j]
+            filename= paste(folder_name, 'joint_scatter_', par1, '_', par2, sep='')
+            open_figure(filename, 'png', w=12, h=9)
+            plot(self$true_mcmc_outputs[[par1]], self$true_mcmc_outputs[[par2]], pch=19, xlab=par1, ylab=par2)
+            dev.off()
+          }
+        }
+        
+        # produce best_likelihood fitted graph
+        if (model==1){
+          self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
+                                          gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max],
+                                          mu = self$analysis$mu, from_mcmc=TRUE) 
+        }else if(model==2){
+          self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
+                                          gamma =self$analysis$metropolis_records$gamma[j_max], mu_t =self$analysis$metropolis_records$mu_t[j_max],
+                                          kappa =self$analysis$metropolis_records$kappa[j_max], alpha =self$analysis$metropolis_records$alpha[j_max],
+                                          mu = self$analysis$mu, from_mcmc=TRUE)
+        }
+        
+        # produce all_accepted_runs graph
+        if (model==1){
+          self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
+                                          gamma =self$true_mcmc_outputs$gamma, mu_t =self$true_mcmc_outputs$mu_t,
+                                          mu = self$analysis$mu, from_mcmc=TRUE) 
+        }else if(model==2){
+          self$analysis$plot_multi_cohort(smear_status=smear_status,plot_model = TRUE, model = model,
+                                          gamma =self$true_mcmc_outputs$gamma, mu_t =self$true_mcmc_outputs$mu_t,
+                                          kappa =self$true_mcmc_outputs$kappa, alpha =self$true_mcmc_outputs$alpha,
+                                          mu = self$analysis$mu, from_mcmc=TRUE)
+        }
+        
+        # ACF graphs
+        # parameter values and log likelihhod over iterations
+        print("loading forecast package ...")
+        library(forecast)
+        print("... done")
+        
+        for (par in self$analysis$mcmc_param_list){
+          filename= paste(folder_name, 'correlogram_' ,par, sep='')
+          open_figure(filename, 'png', w=12, h=9)
+          # plot <- ggAcf(x = self$true_mcmc_outputs[[par]], lag.max = 20, type='correlation',title=par)
+          # print(plot)
+          dev.off()
+        }
       }
       
-      # ACF graphs
-      # parameter values and log likelihhod over iterations
-      for (par in names(self$analysis$proposal_sd[[model]])){
-        filename= paste(folder_name, 'correlogram_' ,par, sep='')
-        open_figure(filename, 'png', w=12, h=9)
-        # plot <- ggAcf(x = self$true_mcmc_outputs[[par]], lag.max = 20, type='correlation',title=par)
-        # print(plot)
-        dev.off()
-      }
+      
       
       # print some stats
       str = paste("MCMC acceptance ratio: ", round(100*sum(self$analysis$metropolis_records$accepted)/nrow(self$analysis$metropolis_records)) ,' %', sep='')
