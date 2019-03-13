@@ -1,5 +1,6 @@
 library(R6)
-source('G:/My Drive/R_toolkit/graph_tools.R')
+library(truncnorm)
+source('graph_tools.R')
 
 get_param_base <- function(param){
   return(strsplit(param,'#')[[1]][1])
@@ -238,8 +239,17 @@ Analysis <- R6Class(
               p = self$get_individual_death_proba(self$all_data[j,], model, params_to_evaluate)
               # binomial component of the likelihood
               pseudo_ll = pseudo_ll + y_k * log(p) + (n_k - y_k) * log(1 - p)  # provi for testing
-              # add the contribution of the distribution linking all parameters together
               
+              # add the contribution of the distribution linking all parameters together for gamma un mu_t
+              for (par_end in c('gamma', 'mu_t')){
+                par_name = paste('lambda_',par_end,sep='')
+                lambda = params[[par_name]]
+                par_name = paste('sigma_',par_end,sep='')
+                sigma = params[[par_name]]
+                x_name = paste(par_end,'#',self$all_data$cohort_id[j],sep='')
+                x = params[[x_name]]
+                pseudo_ll = pseudo_ll - log(x) - ((log(x)-lambda)**2)/(2*sigma**2) 
+              } 
             }
           }
         }
@@ -252,7 +262,11 @@ Analysis <- R6Class(
         for (par in names(current_param_vals)){
           if (par != 'mu'){
             par_base = get_param_base(par)
-            proposed_param_vals[[par]] = rnorm(1,mean = current_param_vals[[par]],sd = self$proposal_sd[[par_base]])
+            if (grepl('lambda',par)){
+              proposed_param_vals[[par]] = rnorm(1,mean = current_param_vals[[par]],sd = self$proposal_sd[[par_base]])
+            }else{
+              proposed_param_vals[[par]] = rtruncnorm(1,mean = current_param_vals[[par]],sd = self$proposal_sd[[par_base]],a = 0)
+            }
           }
         }
         return(proposed_param_vals)
@@ -335,27 +349,30 @@ Analysis <- R6Class(
           # new candidate parameter values
           candidate_param_vals = self$proposal_function(model,current_param_vals)
           
-          # test for negative values
-          for (par in names(candidate_param_vals)){
-            if (candidate_param_vals[[par]] <= 0){
-              if ('lambda' %in% par){
-                
-              }else{
-                accepted = 0
-                break
-              }
-            } 
-          }
-          
           # if proposed parameter values are acceptable
           if (accepted == 1){
+            # evaluate the likelihood
             candidate_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model,params=candidate_param_vals, smear_status=smear_status,random_effects=random_effects)
             
+            # weight for non-symmetrical proposal function
+            conditional_proposal_num_log = 0 # log g(x | x')
+            conditional_proposal_deno_log = 0 # log g(x' | x) 
+            for (par in names(candidate_param_vals)){
+              if (!grepl('lambda',par) && par!='mu'){
+                param_base = get_param_base(par)
+                std = self$proposal_sd[[param_base]]
+                trunc_proba_num = dtruncnorm(x=current_param_vals[[par]], a=0,mean=candidate_param_vals[[par]], sd=std)
+                conditional_proposal_num_log = conditional_proposal_num_log + log(trunc_proba_num)
+                trunc_proba_deno = dtruncnorm(x=candidate_param_vals[[par]], a=0, mean=current_param_vals[[par]], sd=std)
+                conditional_proposal_deno_log = conditional_proposal_deno_log + log(trunc_proba_deno)
+              }
+            }
+            
             # decide acceptance
-            if (candidate_pseudo_ll >= current_pseudo_ll){
+            if ((candidate_pseudo_ll + conditional_proposal_num_log) >= (current_pseudo_ll + conditional_proposal_deno_log)){
               accepted = 1
             }else{
-              log_accept_proba = candidate_pseudo_ll - current_pseudo_ll
+              log_accept_proba = candidate_pseudo_ll + conditional_proposal_num_log - (current_pseudo_ll + conditional_proposal_deno_log)
               accepted = rbinom(1,1,prob = exp(log_accept_proba))
             }
           }else{
@@ -364,7 +381,7 @@ Analysis <- R6Class(
           
           # store information
           self$store_mcmc_iteration(proposed_param_vals=candidate_param_vals, pseudo_ll=candidate_pseudo_ll, accepted=accepted, index=j)
-                
+     
           # update variables
           if (accepted == 1){
             current_param_vals = candidate_param_vals
@@ -709,13 +726,10 @@ Outputs <- R6Class(
     produce_mcmc_random_effect_graphs = function(model){
       folder_name = paste('outputs/mcmc/Model',model,'/',sep='')
       
-      print("@@@@@@@")
       for (par_base in self$analysis$param_bases){
         filename= paste(folder_name, 'results_by_cohort_' ,par_base, sep='')
         open_figure(filename, 'png', w=12, h=length(self$analysis$cohort_ids))
-        
         plot(0,0,type='n',main='',xlab=par_base,xlim=c(0,0.5),ylim=c(0,length(self$analysis$cohort_ids)))
-        
         h = 0
         for (i in self$analysis$cohort_ids){
           h = h+1
