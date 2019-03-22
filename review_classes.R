@@ -339,7 +339,7 @@ Analysis <- R6Class(
         for (param in self$mcmc_param_list){
           param_base = get_param_base(param)
           current_param_vals[[param]] = self$initial_params[[param_base]]
-          self$acceptance_ratios[[param]] = 0
+          self$acceptance_ratios[[param]] = 0  # counting variable originally, eventually becomes a ratio
         }
         current_param_vals$mu = self$mu
           
@@ -432,7 +432,7 @@ Analysis <- R6Class(
                 if (accepted==1){
                   current_param_vals = running_param_vals 
                   current_pseudo_ll = running_pseudo_ll
-                  self$acceptance_ratios[[par]] = self$acceptance_ratios[[param]] + 1
+                  self$acceptance_ratios[[par]] = self$acceptance_ratios[[par]] + 1
                 }
               }
             }
