@@ -800,6 +800,8 @@ Outputs <- R6Class(
           qt = quantile(x,c(0.025,0.5,0.975),names = FALSE)
           lines(x = c(qt[1], qt[3]), y=c(h,h))
           points(x=qt[2], y=h)
+          
+          text(x = 0,y=h,labels = i)
         }
         dev.off()
       }
@@ -808,7 +810,7 @@ Outputs <- R6Class(
     generate_cohort_profile = function(cohort, fitted_params,likelihoods){
       
       filename = paste('outputs/cohort_profile_',cohort$id,sep='')
-      open_figure(filename, 'pdf', w=8.27, h=11.69)
+      open_figure(filename, 'png', w=8.27, h=11.69)
       text_fields = list(
         'Source'= cohort$author,
         'Author'= cohort$author,
@@ -852,10 +854,12 @@ Outputs <- R6Class(
 
       par(mar=c(4,4,4,1))
       param = paste('mu_t#',cohort$id,sep='')
-      hist(fitted_params[[param]],breaks = 50,main='',xlab='mu_t')
+      hist(c(0))
+      # hist(fitted_params[[param]],breaks = 50,main='',xlab='mu_t')
 
       param = paste('gamma#',cohort$id,sep='')
-      hist(fitted_params[[param]],breaks = 50,main='',xlab='gamma')
+      hist(c(0))
+      # hist(fitted_params[[param]],breaks = 50,main='',xlab='gamma')
 
       dev.off()
       
