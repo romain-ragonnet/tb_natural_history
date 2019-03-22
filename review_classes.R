@@ -82,14 +82,10 @@ Cohort <- R6Class(
     },
     
     plot_cohort_data = function(){
-      title = paste(self$author, self$smear_status, self$cohort_name)
-      if (is.null(self$perc_death)){
-        plot(self$times, self$perc_alive, main=title, 
-             xlab='time (years)', ylab='percentage still alive')
-      }else{
-        plot(self$times, self$perc_death, main=title,
-             xlab='time (years)', ylab='percentage dead')
-      }
+      plot(self$times, self$perc_death, main='',
+           xlab='time (years)', ylab='cumulative death (%)', xlim=c(0,30), ylim=c(0,100),
+           pch=18, cex=1.5
+           )
     },
     
     get_plot_color = function(){
@@ -125,9 +121,10 @@ Analysis <- R6Class(
       param_bases = c(), #  e.g. c('gamma', 'mu_t') for Model 1
       mcmc_param_list = c(), #  e.g. c('gamma_1', 'gamma_2'..., 'mu_t_1',...) for Model 1
       initial_params = list('gamma'=0.1, 'mu_t'=0.1, 'kappa'=1.0, 'alpha'= 0.5, 'lambda_mu_t'=log(0.2)-0.5, 'sigma_mu_t'=1.0,'lambda_gamma'=log(0.2)-0.5, 'sigma_gamma'=1.0),  
-      proposal_sd = list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=0.01, 'alpha'= 0.02, 'lambda_mu_t'=0.05, 'sigma_mu_t'=0.05,'lambda_gamma'=0.05, 'sigma_gamma'=0.05),  
+      proposal_sd = list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=0.01, 'alpha'= 0.02, 'lambda_mu_t'=0.05, 'sigma_mu_t'=0.05,'lambda_gamma'=0.1, 'sigma_gamma'=0.1),  
       mu = 1/40,
       metropolis_records = NULL,
+      acceptance_ratios = list(),
       burned_iterations = 0,
       cohort_ids = c(),
      
@@ -282,8 +279,20 @@ Analysis <- R6Class(
         self$metropolis_records$accepted[index] = accepted
       },
       
-      run_metropolis = function(model,n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE){
+      run_metropolis = function(model,n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE, parallel=FALSE, update_type = 'block_wise'){
+        # update_type is one of "block_wise" or "component_wise"
         # Runs Metropolis algorithm for n_iterations
+        if (parallel){
+          print("Parallel computing not implemented yet")
+          #print("Loading package 'parallel' ...")
+          #library(parallel)
+          #print('... done!')
+          #  z=1:4
+          # cl<-makeCluster(8,type="SOCK")
+          # clusterApply(cl, z,function(x) Sys.sleep(1))
+          # stopCluster(cl)
+        }
+        
         self$burned_iterations = n_burned
         self$metropolis_records = data.frame('pseudo_ll'=double(n_iterations),'accepted'=integer(n_iterations))
         if (model == 1){
@@ -330,6 +339,7 @@ Analysis <- R6Class(
         for (param in self$mcmc_param_list){
           param_base = get_param_base(param)
           current_param_vals[[param]] = self$initial_params[[param_base]]
+          self$acceptance_ratios[[param]] = 0
         }
         current_param_vals$mu = self$mu
           
@@ -337,20 +347,20 @@ Analysis <- R6Class(
         
         self$store_mcmc_iteration(proposed_param_vals=current_param_vals, pseudo_ll=current_pseudo_ll, accepted=1, index=1)
         last_print_j = 0
+        
+        start_time <- proc.time()
         for (j in 2:n_iterations){
+          print(j)
           if ((j-last_print_j) >= 10){
             str = paste('Completed iteration ', j, sep='')
             print(str)
             last_print_j = j
           }
           
-          accepted = 1    #may change later on
-          
           # new candidate parameter values
           candidate_param_vals = self$proposal_function(model,current_param_vals)
-          
-          # if proposed parameter values are acceptable
-          if (accepted == 1){
+
+          if (update_type == 'block_wise'){
             # evaluate the likelihood
             candidate_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model,params=candidate_param_vals, smear_status=smear_status,random_effects=random_effects)
             
@@ -375,18 +385,69 @@ Analysis <- R6Class(
               log_accept_proba = candidate_pseudo_ll + conditional_proposal_num_log - (current_pseudo_ll + conditional_proposal_deno_log)
               accepted = rbinom(1,1,prob = exp(log_accept_proba))
             }
+            
+            
+            # store information
+            self$store_mcmc_iteration(proposed_param_vals=candidate_param_vals, pseudo_ll=candidate_pseudo_ll, accepted=accepted, index=j)
+            
+            # update variables
+            if (accepted == 1){
+              current_param_vals = candidate_param_vals
+              current_pseudo_ll = candidate_pseudo_ll
+            }
+          }else if(update_type == 'component_wise'){
+            
+            for (par in names(current_param_vals)){
+              if (par != 'mu'){
+                running_param_vals = current_param_vals
+                running_param_vals[[par]] = candidate_param_vals[[par]]
+                
+                #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                #             ACCEPTANCE ????
+                # log-likelihood
+                running_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model,params=running_param_vals, smear_status=smear_status,random_effects=random_effects)
+              
+                # Symetry adjustment
+                if (!grepl('lambda',par)){
+                  param_base = get_param_base(par)
+                  std = self$proposal_sd[[param_base]]
+                  trunc_proba_num = dtruncnorm(x=current_param_vals[[par]], a=0,mean=candidate_param_vals[[par]], sd=std)
+                  conditional_proposal_num_log = log(trunc_proba_num)
+                  trunc_proba_deno = dtruncnorm(x=candidate_param_vals[[par]], a=0, mean=current_param_vals[[par]], sd=std)
+                  conditional_proposal_deno_log = log(trunc_proba_deno)
+                }else{
+                  conditional_proposal_num_log = 0
+                  conditional_proposal_deno_log = 0
+                }
+                
+                # decide acceptance
+                if ((running_pseudo_ll + conditional_proposal_num_log) >= (current_pseudo_ll + conditional_proposal_deno_log)){
+                  accepted = 1
+                }else{
+                  log_accept_proba = running_pseudo_ll + conditional_proposal_num_log - (current_pseudo_ll + conditional_proposal_deno_log)
+                  accepted = rbinom(1,1,prob = exp(log_accept_proba))
+                }
+                
+                # Update current params
+                if (accepted==1){
+                  current_param_vals = running_param_vals 
+                  current_pseudo_ll = running_pseudo_ll
+                  self$acceptance_ratios[[par]] = self$acceptance_ratios[[param]] + 1
+                }
+              }
+            }
+            #Store current_param_vals
+            self$store_mcmc_iteration(proposed_param_vals=current_param_vals, pseudo_ll=current_pseudo_ll, accepted=1, index=j)
           }else{
-            candidate_pseudo_ll = NA
-          }     
-          
-          # store information
-          self$store_mcmc_iteration(proposed_param_vals=candidate_param_vals, pseudo_ll=candidate_pseudo_ll, accepted=accepted, index=j)
-     
-          # update variables
-          if (accepted == 1){
-            current_param_vals = candidate_param_vals
-            current_pseudo_ll = candidate_pseudo_ll
+            print("Error: update type not supported")
           }
+          
+          time_elapsed = proc.time() - start_time
+          str=paste("Elapsed time since starting: ", time_elapsed[3], ' sec', sep='')
+          print(str)
+        }
+        for (par in names(self$acceptance_ratios)){
+          self$acceptance_ratios[[par]] = round(100*self$acceptance_ratios[[par]] / (n_iterations-1))
         }
       },
            
@@ -721,6 +782,7 @@ Outputs <- R6Class(
       # print some stats
       str = paste("MCMC acceptance ratio: ", round(100*sum(self$analysis$metropolis_records$accepted)/nrow(self$analysis$metropolis_records)) ,' %', sep='')
       print(str)
+      print(self$analysis$acceptance_ratios)
     },
     
     produce_mcmc_random_effect_graphs = function(model){
@@ -741,6 +803,62 @@ Outputs <- R6Class(
         }
         dev.off()
       }
+    },
+    
+    generate_cohort_profile = function(cohort, fitted_params,likelihoods){
+      
+      filename = paste('outputs/cohort_profile_',cohort$id,sep='')
+      open_figure(filename, 'pdf', w=8.27, h=11.69)
+      text_fields = list(
+        'Source'= cohort$author,
+        'Author'= cohort$author,
+        'Publication year'= cohort$author,
+        'Patient recruitment years'=cohort$year_range,
+        'Cohort size'=cohort$cohort_size,
+        'Type of TB (smear-status)'=cohort$smear_status,
+        'Location'=cohort$author,
+        'Additional information'=cohort$author
+      )
+      title=paste('Cohort ', cohort$id, sep='')
+      
+      layout(matrix(c(1,1,2,3,4,4,5,6),ncol = 2,byrow = TRUE),heights = c(0.2,0.4,1,1))
+      par(mar=c(1, 1, 1, 1), mgp=c(2, 1, 0))
+      
+      # Cohort id
+      plot(0,0,type='n',axes=FALSE,main='',xlim=c(0,10),ylim=c(0,10))
+      text(5,5, title,cex = 2.5)
+
+      # cohort details
+      count = 0
+      plot(0,0,type='n',axes=FALSE,main='',xlim=c(0,10),ylim=c(0,10))
+      for (field in names(text_fields)[1:4]){
+        count=count+1
+        str = paste(field, ": ", text_fields[[field]], sep='')
+        text(0,10-2*count,str, cex=1.5, pos=4)
+      }
+
+      # cohort details continued
+      count = 0
+      plot(0,0,type='n',axes=FALSE,main='',xlim=c(0,10),ylim=c(0,10))
+      for (field in names(text_fields)[5:length(names(text_fields))]){
+        count=count+1
+        str = paste(field, ": ", text_fields[[field]], sep='')
+        text(0,10-2*count,str, cex=1.5, pos=4)
+      }
+
+      # data
+      par(mar=c(3.5,6,1,6))
+      cohort$plot_cohort_data()
+
+      par(mar=c(4,4,4,1))
+      param = paste('mu_t#',cohort$id,sep='')
+      hist(fitted_params[[param]],breaks = 50,main='',xlab='mu_t')
+
+      param = paste('gamma#',cohort$id,sep='')
+      hist(fitted_params[[param]],breaks = 50,main='',xlab='gamma')
+
+      dev.off()
+      
     }
   )
 )
