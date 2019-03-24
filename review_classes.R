@@ -102,7 +102,9 @@ Cohort <- R6Class(
         "Sinding-Larsen" = 'purple',
         "Furth" = 'darkgreen',
         "Berg" = 'yellow',
-        "Munchbach" = "orange"
+        "Munchbach" = "orange",
+        "Lindhart" = 'black',
+        "Magnusson" = 'green'
       )
       # determine an alpha between 0.5 and 1
       # 0.5 for the oldest times (1905), 1 for the most recent (1940) 

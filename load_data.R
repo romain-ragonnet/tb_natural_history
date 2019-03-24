@@ -489,6 +489,153 @@ analysis$add_cohort(author = 'Munchbach',
                      perc_alive = NULL
 )
 
+#_____________________________________________________________
+#  Lindhart (Table 33, see excel calculations)
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'men_1930',
+                    year_range = c(1930, 1931),
+                    cohort_size = 1162,
+                    times = c(1,2,3,4,5),
+                    perc_death = c(44.7,56.2,61.6,64.9,68.3),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'men_1931',
+                    year_range = c(1931, 1932),
+                    cohort_size = 1140,
+                    times = c(1,2,3,4),
+                    perc_death = c(42.5, 52.9, 59.1, 64),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'men_1932',
+                    year_range = c(1932, 1933),
+                    cohort_size = 1138,
+                    times = c(1,2,3),
+                    perc_death = c(44.4, 54.6, 60.6),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'men_1933',
+                    year_range = c(1933, 1934),
+                    cohort_size = 1004,
+                    times = c(1,2),
+                    perc_death = c(45.6, 55.7),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'men_1934',
+                    year_range = c(1934, 1935),
+                    cohort_size = 968,
+                    times = c(1),
+                    perc_death = c(42.5),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'women_1930',
+                    year_range = c(1930, 1931),
+                    cohort_size = 1383,
+                    times = c(1,2,3,4,5),
+                    perc_death = c(42.4, 56.5, 63.4, 67.1, 70.9),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'women_1931',
+                    year_range = c(1931, 1932),
+                    cohort_size = 1342,
+                    times = c(1,2,3,4),
+                    perc_death = c(42.5, 54.6, 61.9, 66.6),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'women_1932',
+                    year_range = c(1932, 1933),
+                    cohort_size = 1398,
+                    times = c(1,2,3),
+                    perc_death = c(44.6, 54.3, 60.7),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'women_1933',
+                    year_range = c(1933, 1934),
+                    cohort_size = 1205,
+                    times = c(1,2),
+                    perc_death = c(45.1, 56.1),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Lindhart',
+                    smear_status = 'positive',
+                    cohort_name = 'women_1934',
+                    year_range = c(1934, 1935),
+                    cohort_size = 1057,
+                    times = c(1),
+                    perc_death = c(44.2),
+                    perc_alive = NULL
+)
+
+
+#_____________________________________________________________
+#  Magnusson (Tables 16 (Sm-) p44 and 17(Sm+) p46)
+analysis$add_cohort(author = 'Magnusson',
+                    smear_status = 'negative',
+                    cohort_name = 'men',
+                    year_range = c(1916, 1935),
+                    cohort_size = 133,
+                    times = c(4,10,20),
+                    perc_death = c(9.8, 16.5, 20.3),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Magnusson',
+                    smear_status = 'negative',
+                    cohort_name = 'women',
+                    year_range = c(1916, 1935),
+                    cohort_size = 280,
+                    times = c(4,10,20),
+                    perc_death = c(7.5, 14.7, 17.9),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Magnusson',
+                    smear_status = 'positive',
+                    cohort_name = 'men',
+                    year_range = c(1916, 1935),
+                    cohort_size = 166,
+                    times = c(4,10,20),
+                    perc_death = c(55.4, 71.1, 75.3),
+                    perc_alive = NULL
+)
+
+analysis$add_cohort(author = 'Magnusson',
+                    smear_status = 'positive',
+                    cohort_name = 'women',
+                    year_range = c(1916, 1935),
+                    cohort_size = 213,
+                    times = c(4,10,20),
+                    perc_death = c(68.1, 74.6, 77.5),
+                    perc_alive = NULL
+)
+
+
+
 # ___________________________________
 #   Preliminary work
 analysis$produce_main_dataframe()
