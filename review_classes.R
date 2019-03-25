@@ -11,13 +11,16 @@ Cohort <- R6Class(
   public = list(
     id = NULL,
     author = '',
+    country = '',
     smear_status = '',
     cohort_name = '',
     year_range = NULL,
+    publi_year= NULL
     cohort_size = 0,
     times = c(),
     perc_death = NULL,
     perc_alive = NULL,
+    description = '',
     formatted_data = NULL,
   
     initialize = function(id, author, smear_status, cohort_name, year_range,
@@ -53,6 +56,68 @@ Cohort <- R6Class(
           self$perc_death = c(0, self$perc_death)
         }
       }
+      
+      # country
+      countries=list(
+        "Baart De La Faille" = 'The Netherlands',
+        "Buhl" = 'Denmark',
+        "Griep" = 'The Netherlands',
+        "Tattersall" = 'England',
+        "Thompson" = 'England',
+        "Hartley" = 'England',
+        "Braeuning" = 'Poland',
+        "Backer" = 'Norway',
+        "Trail" = 'England',
+        "Sinding-Larsen" = 'Denmark',
+        "Furth" = 'Switzerland',
+        "Berg" = 'Sweden',
+        "Munchbach" = "Germany",
+        "Lindhart" = 'Denmark',
+        "Magnusson" = 'Iceland'
+      )
+      self$country = countries[[self$author]]
+      
+      # publi_year
+      publi_years = list(
+        "Baart De La Faille" = 1939,
+        "Buhl" = 1967,
+        "Griep" = 1939,
+        "Tattersall" = 1947,
+        "Thompson" = 1943,
+        "Hartley" = 1935,
+        "Braeuning" = 1936,
+        "Backer" = 1937,
+        "Trail" = 1931,
+        "Sinding-Larsen" = 1937,
+        "Furth" = 1930,
+        "Berg" = 1939,
+        "Munchbach" = "1939 (from Berg et al.)",
+        "Lindhart" = 1939,
+        "Magnusson" = 1938
+      )
+      self$publi_year = publi_years[[self$author]]
+      
+      # Description
+      descriptions = list(
+        "Baart De La Faille" = 'TB cases hospitalized in the Sanatorium "Berg en Bosch" in The Netherlands',
+        "Buhl" = 'Danish TB patients diagnosed between 1925 and 1954',
+        "Griep" = 'All notified cases of "open" pulmonary TB occurring in The Hague, The Netherlands between 1920 and 1937',
+        "Tattersall" = 'Sputum-positive cases attending Reading (UK) dispensary between 1914 and 1940',
+        "Thompson" = 'All sputum-positive TB patients occurring in a compact industrial area in Middlesex County, UK, diagnosed between 1928 and 1938',
+        "Hartley" = 'Retrospective cohort study of cases treated for TB at Brompton Hospital.',
+        "Braeuning" = 'TB dispensary patients from Szczecin, Poland (then known as Stettin, Germany',
+        "Backer" = 'Patients notified to the Board of Health in Oslo, Norway',
+        "Trail" = 'Cohort study in the UK among patients of the King Edward VII sanatorium in Midhurst (UK)',
+        "Sinding-Larsen" = 'Cohort study in Denmark among sanatorium patients',
+        "Furth" = 'Pulmonary TB patients from Barmelweid sanatorium in Switzerland',
+        "Berg" = 'All patients with "open" TB from Gothenburg (Sweden) diagnosed between 1928 and 1934',
+        "Munchbach" = 'Sanatorium patients with "open" bacillary TB',
+        "Lindhart" = 'Mortality of notified TB cases in Denmark between 1925 and 1934',
+        "Magnusson" = 'Cases admitted for treatment at the Vifillsstadir Sanatorium in Reykjavik, Iceland, recruited between 1916-1923'
+      )
+      self$description = descriptions[[self$author]]
+      
+      
       
       # format the data
       if (!is.null(self$cohort_size)){
@@ -813,15 +878,16 @@ Outputs <- R6Class(
       
       filename = paste('outputs/cohort_profile_',cohort$id,sep='')
       open_figure(filename, 'png', w=8.27, h=11.69)
+       str_years_diagnosis = paste(cohort$year_range[1],'-',cohort$year_range[2], sep='')
+      
       text_fields = list(
-        'Source'= cohort$author,
         'Author'= cohort$author,
-        'Publication year'= cohort$author,
-        'Patient recruitment years'=cohort$year_range,
+        'Publication year'= cohort$publi_year,
+        'Patient recruitment years'=str_years_diagnosis,
         'Cohort size'=cohort$cohort_size,
         'Type of TB (smear-status)'=cohort$smear_status,
-        'Location'=cohort$author,
-        'Additional information'=cohort$author
+        'Location'=cohort$country,
+        'Additional information'=cohort$description
       )
       title=paste('Cohort ', cohort$id, sep='')
       

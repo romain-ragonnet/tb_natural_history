@@ -640,16 +640,11 @@ analysis$add_cohort(author = 'Magnusson',
 #   Preliminary work
 analysis$produce_main_dataframe()
 
-#______________________________________________________________-
-# RUNNING methods
-# analysis$plot_multi_cohort(plot_model=FALSE)
-#analysis$plot_multi_cohort(plot_model=TRUE)
+generate_cohort_profiles <- function(analysis){
+  outputs = Outputs$new(analysis)
+  for (coh in analysis$cohorts){
+    outputs$generate_cohort_profile(coh, c(0), c(0))
+  }
+}
 
-#analysis$plot_multi_cohort(smear_status = c('positive'), plot_model=FALSE)
-#analysis$plot_multi_cohort(smear_status = c('negative'), plot_model=FALSE)
-
-#analysis$plot_multi_cohort(smear_status = c('positive'), plot_model=TRUE)
-#analysis$plot_multi_cohort(smear_status = c('negative'), plot_model=TRUE)
-
-# analysis$plot_cohort_dates()
 
