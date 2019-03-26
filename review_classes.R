@@ -352,6 +352,8 @@ Analysis <- R6Class(
             y_k = self$all_data$n_new_deaths[j]
             n_k = self$all_data$n_at_risk[j]
             
+            params$mu = self$cohorts[[self$all_data$cohort_id[j]]]$mortality_rate
+           
             # evaluate the probability of death between t_k and t_k+1
             if (!random_effects){
               p = self$get_individual_death_proba(self$all_data[j,], model, params)
@@ -471,7 +473,7 @@ Analysis <- R6Class(
           current_param_vals[[param]] = self$initial_params[[param_base]]
           self$acceptance_ratios[[param]] = 0  # counting variable originally, eventually becomes a ratio
         }
-        current_param_vals$mu = self$mu
+        current_param_vals$mu = self$mu  # not relevant anymore
           
         current_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model, params=current_param_vals, smear_status=smear_status, random_effects=random_effects)
         
