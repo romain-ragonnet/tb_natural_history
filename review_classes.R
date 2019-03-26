@@ -159,7 +159,7 @@ Cohort <- R6Class(
     
     work_out_mortality = function(mortality_data){
       if (is.null(self$age_distribution)){
-        self$mortality_rate = 1/55
+        self$mortality_rate = 1/55  # hard-code
       }else{
         recruitment_year = floor(mean(self$year_range))
         # find appropriate mortality table
@@ -180,8 +180,12 @@ Cohort <- R6Class(
         cumul_rates = 0 
         for (cat in self$age_distribution){
           pop = pop + cat[3]
-          for (age in cat[1]:cat[2]){
-            cumul_rates = cumul_rates + rates_by_age[age+1] * cat[3]/(1+cat[2]-cat[1])
+          year_max = cat[2]
+          if (year_max == 100){
+            year_max = cat[1] + 10
+          }
+          for (age in cat[1]:year_max){
+            cumul_rates = cumul_rates + rates_by_age[age+1] * cat[3]/(1+year_max-cat[1])
           }
         }
         self$mortality_rate = cumul_rates/pop
