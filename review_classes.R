@@ -15,7 +15,7 @@ Cohort <- R6Class(
     smear_status = '',
     cohort_name = '',
     year_range = NULL,
-    publi_year= NULL
+    publi_year= NULL,
     cohort_size = 0,
     times = c(),
     perc_death = NULL,
@@ -99,25 +99,33 @@ Cohort <- R6Class(
       
       # Description
       descriptions = list(
-        "Baart De La Faille" = 'TB cases hospitalized in the Sanatorium "Berg en Bosch" in The Netherlands',
-        "Buhl" = 'Danish TB patients diagnosed between 1925 and 1954',
-        "Griep" = 'All notified cases of "open" pulmonary TB occurring in The Hague, The Netherlands between 1920 and 1937',
-        "Tattersall" = 'Sputum-positive cases attending Reading (UK) dispensary between 1914 and 1940',
-        "Thompson" = 'All sputum-positive TB patients occurring in a compact industrial area in Middlesex County, UK, diagnosed between 1928 and 1938',
+        "Baart De La Faille" = 'TB cases hospitalized in the Sanatorium "Berg en Bosch".',
+        "Buhl" = 'Danish TB patients diagnosed between 1925 and 1954.',
+        "Griep" = 'All notified cases of "open" pulmonary TB occurring in The Hague between 1920 and 1937.',
+        "Tattersall" = 'Sputum-positive cases attending Reading (UK) dispensary between 1914 and 1940.',
+        "Thompson" = 'All sputum-positive TB patients occurring in a compact industrial area in Middlesex County.',
         "Hartley" = 'Retrospective cohort study of cases treated for TB at Brompton Hospital.',
-        "Braeuning" = 'TB dispensary patients from Szczecin, Poland (then known as Stettin, Germany',
-        "Backer" = 'Patients notified to the Board of Health in Oslo, Norway',
-        "Trail" = 'Cohort study in the UK among patients of the King Edward VII sanatorium in Midhurst (UK)',
-        "Sinding-Larsen" = 'Cohort study in Denmark among sanatorium patients',
-        "Furth" = 'Pulmonary TB patients from Barmelweid sanatorium in Switzerland',
-        "Berg" = 'All patients with "open" TB from Gothenburg (Sweden) diagnosed between 1928 and 1934',
-        "Munchbach" = 'Sanatorium patients with "open" bacillary TB',
-        "Lindhart" = 'Mortality of notified TB cases in Denmark between 1925 and 1934',
-        "Magnusson" = 'Cases admitted for treatment at the Vifillsstadir Sanatorium in Reykjavik, Iceland, recruited between 1916-1923'
+        "Braeuning" = 'TB dispensary patients from Szczecin, Poland (then known as Stettin, Germany.',
+        "Backer" = 'Patients notified to the Board of Health in Oslo.',
+        "Trail" = 'Cohort study among patients of the King Edward VII sanatorium in Midhurst.',
+        "Sinding-Larsen" = 'Cohort study in Denmark among sanatorium patients.',
+        "Furth" = 'Pulmonary TB patients from Barmelweid sanatorium.',
+        "Berg" = 'All patients with "open" TB from Gothenburg diagnosed between 1928 and 1934.',
+        "Munchbach" = 'Sanatorium patients with "open" bacillary TB.',
+        "Lindhart" = 'Mortality of notified TB cases in Denmark between 1925 and 1934.',
+        "Magnusson" = 'Cases admitted for treatment at the Vifillsstadir Sanatorium in Reykjavik.'
       )
       self$description = descriptions[[self$author]]
       
-      
+      # add gender details to descriptions
+      if (grepl('men',self$cohort_name)){
+        if (grepl('women',self$cohort_name)){
+          str = paste(self$description, ' Female patients only.', sep='')
+        }else{
+          str = paste(self$description, ' Male patients only.', sep='')
+        }
+        self$description = str
+      }
       
       # format the data
       if (!is.null(self$cohort_size)){
@@ -194,6 +202,22 @@ Analysis <- R6Class(
       acceptance_ratios = list(),
       burned_iterations = 0,
       cohort_ids = c(),
+      mortality_data = list(),
+      
+      initialize = function(){
+        self$read_mortality_data()
+      },
+      
+      read_mortality_data = function(){
+        for (sex in c('male', 'female')){
+          filename = paste('data/', sex, '_mortality.csv', sep='')
+          str = paste("Reading ", filename,sep='')
+          print(str)
+          data = read.csv(filename,header=TRUE,colClasses = rep('numeric',37))
+          colnames(data)[1]='age'
+          self$mortality_data[[sex]] = data
+        }
+      },
      
       add_cohort = function(author, smear_status, cohort_name, year_range,
                             cohort_size, times, perc_death, perc_alive){
@@ -885,9 +909,9 @@ Outputs <- R6Class(
         'Publication year'= cohort$publi_year,
         'Patient recruitment years'=str_years_diagnosis,
         'Cohort size'=cohort$cohort_size,
-        'Type of TB (smear-status)'=cohort$smear_status,
         'Location'=cohort$country,
-        'Additional information'=cohort$description
+        'Type of TB (smear-status)'=cohort$smear_status,
+        'Details'=cohort$description
       )
       title=paste('Cohort ', cohort$id, sep='')
       
@@ -904,7 +928,7 @@ Outputs <- R6Class(
       for (field in names(text_fields)[1:4]){
         count=count+1
         str = paste(field, ": ", text_fields[[field]], sep='')
-        text(0,10-2*count,str, cex=1.5, pos=4)
+        text(0,10-2*count,str, cex=1.5, adj=c(0,1))
       }
 
       # cohort details continued
@@ -913,7 +937,10 @@ Outputs <- R6Class(
       for (field in names(text_fields)[5:length(names(text_fields))]){
         count=count+1
         str = paste(field, ": ", text_fields[[field]], sep='')
-        text(0,10-2*count,str, cex=1.5, pos=4)
+        if (field == 'Details'){
+          str = strBreakInLines(str,breakAt = 30)
+        }
+        text(0,10-2*count,str, cex=1.5, adj=c(0,1))
       }
 
       # data
@@ -934,3 +961,22 @@ Outputs <- R6Class(
     }
   )
 )
+
+strBreakInLines <- function(s, breakAt=90, prepend="") {
+  words <- unlist(strsplit(s, " "))
+  if (length(words)<2) return(s)
+  wordLen <- unlist(Map(nchar, words))
+  lineLen <- wordLen[1]
+  res <- words[1]
+  lineBreak <- paste("\n", prepend, sep="")
+  for (i in 2:length(words)) {
+    lineLen <- lineLen+wordLen[i]
+    if (lineLen < breakAt) 
+      res <- paste(res, words[i], sep=" ")
+    else {
+      res <- paste(res, words[i], sep=lineBreak)
+      lineLen <- 0
+    }
+  }
+  return(res)
+}
