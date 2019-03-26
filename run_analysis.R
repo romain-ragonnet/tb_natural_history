@@ -6,7 +6,7 @@ model = 1
 random_effects = TRUE
 update_type = 'component_wise' # 'block_wise'   # 'component_wise'
 smear_status = c('positive')
-n_iterations = 3
+n_iterations = 10
 n_burned = 1
 
 

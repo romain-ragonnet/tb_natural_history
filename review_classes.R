@@ -473,7 +473,7 @@ Analysis <- R6Class(
           current_param_vals[[param]] = self$initial_params[[param_base]]
           self$acceptance_ratios[[param]] = 0  # counting variable originally, eventually becomes a ratio
         }
-        current_param_vals$mu = self$mu  # not relevant anymore
+        current_param_vals$mu = NA # will be automatically calculated for each cohort
           
         current_pseudo_ll = self$evaluate_pseudo_loglikelihood(model=model, params=current_param_vals, smear_status=smear_status, random_effects=random_effects)
         
@@ -482,7 +482,6 @@ Analysis <- R6Class(
         
         start_time <- proc.time()
         for (j in 2:n_iterations){
-          print(j)
           if ((j-last_print_j) >= 10){
             str = paste('Completed iteration ', j, sep='')
             print(str)
@@ -901,11 +900,13 @@ Outputs <- R6Class(
         print("... done")
         
         for (par in self$analysis$mcmc_param_list){
-          filename= paste(folder_name, 'correlogram_' ,par, sep='')
-          open_figure(filename, 'png', w=12, h=9)
-          # plot <- ggAcf(x = self$true_mcmc_outputs[[par]], lag.max = 20, type='correlation',title=par)
-          # print(plot)
-          dev.off()
+          if (par != 'mu'){
+            filename= paste(folder_name, 'correlogram_' ,par, sep='')
+            open_figure(filename, 'png', w=12, h=9)
+            plot <- ggAcf(x = self$true_mcmc_outputs[[par]], lag.max = 20, type='correlation',title=par)
+            print(plot)
+            dev.off()
+          }
         }
       }else{
         self$produce_mcmc_random_effect_graphs(model)
