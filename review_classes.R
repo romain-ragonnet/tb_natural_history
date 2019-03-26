@@ -161,7 +161,8 @@ Cohort <- R6Class(
       if (is.null(self$age_distribution)){
         self$mortality_rate = 1/55
       }else{
-        start_year = self$year_range[1]
+        recruitment_year = floor(mean(self$year_range))
+        # find appropriate mortality table
         if (grepl('men',self$cohort_name)){
           if (grepl('women',self$cohort_name)){
             mortality_table = mortality_data$female
@@ -171,7 +172,7 @@ Cohort <- R6Class(
         }else{  # all genders
           mortality_table = mortality_data$all
         }
-        colname = paste('mu_',start_year,sep='') 
+        colname = paste('mu_',recruitment_year,sep='') 
         rates_by_age = mortality_table[[colname]]
         
         # calculate average rate
