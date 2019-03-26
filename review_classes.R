@@ -22,9 +22,11 @@ Cohort <- R6Class(
     perc_alive = NULL,
     description = '',
     formatted_data = NULL,
+    age_distribution = NULL,
+    mortality_rate=NULL,
   
     initialize = function(id, author, smear_status, cohort_name, year_range,
-                          cohort_size, times, perc_death, perc_alive){
+                          cohort_size, times, perc_death, perc_alive, age_distribution=NULL){
       self$id = id
       self$author = author
       self$smear_status = smear_status
@@ -34,6 +36,7 @@ Cohort <- R6Class(
       self$times = times
       self$perc_death = perc_death
       self$perc_alive = perc_alive
+      self$age_distribution = age_distribution
       
 
       # work with death percentages only
@@ -154,6 +157,36 @@ Cohort <- R6Class(
       
     },
     
+    work_out_mortality = function(mortality_data){
+      if (is.null(self$age_distribution)){
+        self$mortality_rate = 1/55
+      }else{
+        start_year = self$year_range[1]
+        if (grepl('men',self$cohort_name)){
+          if (grepl('women',self$cohort_name)){
+            mortality_table = mortality_data$female
+          }else{
+            mortality_table = mortality_data$male
+          }
+        }else{  # all genders
+          mortality_table = mortality_data$all
+        }
+        colname = paste('mu_',start_year,sep='') 
+        rates_by_age = mortality_table[[colname]]
+        
+        # calculate average rate
+        pop = 0 # track the total population
+        cumul_rates = 0 
+        for (cat in self$age_distribution){
+          pop = pop + cat[3]
+          for (age in cat[1]:cat[2]){
+            cumul_rates = cumul_rates + rates_by_age[age+1] * cat[3]/(1+cat[2]-cat[1])
+          }
+        }
+        self$mortality_rate = cumul_rates/pop
+      }  
+    },
+    
     plot_cohort_data = function(){
       plot(self$times, self$perc_death, main='',
            xlab='time (years)', ylab='cumulative death (%)', xlim=c(0,30), ylim=c(0,100),
@@ -217,13 +250,18 @@ Analysis <- R6Class(
           colnames(data)[1]='age'
           self$mortality_data[[sex]] = data
         }
+        self$mortality_data$all = 0.5*(self$mortality_data$male+self$mortality_data$female)
       },
      
       add_cohort = function(author, smear_status, cohort_name, year_range,
-                            cohort_size, times, perc_death, perc_alive){
+                            cohort_size, times, perc_death, perc_alive, age_distribution=NULL){
         cohort_id = self$n_cohorts + 1
         cohort = Cohort$new(cohort_id, author, smear_status, cohort_name, year_range,
-                            cohort_size, times, perc_death, perc_alive)
+                            cohort_size, times, perc_death, perc_alive, age_distribution)
+        
+        # work out mortality rate
+        cohort$work_out_mortality(self$mortality_data)
+
         self$cohorts = c(self$cohorts, cohort)
         self$n_cohorts = cohort_id
         str=paste("Cohort ", cohort_id, ' / size: ', cohort_size, ' / author: ', author, sep='')

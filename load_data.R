@@ -144,7 +144,8 @@ analysis$add_cohort(author = 'Buhl',
                     cohort_size = 314,
                     times = seq(1,10,by = 1),
                     perc_death = NULL,
-                    perc_alive = c(72, 60, 56, 47, 45, 39, 38, 37, 35, 32)
+                    perc_alive = c(72, 60, 56, 47, 45, 39, 38, 37, 35, 32),
+                    age_distribution=list(c(16,25,157), c(26,35,86), c(36,45,32), c(46,55,20), c(56,100,19))
 )
 
 #_____________________________________________________________
@@ -183,7 +184,8 @@ analysis$add_cohort(author = 'Tattersall',
                     perc_alive = c(71.1, 55.2, 44.2, 37, 32.1, 29.7, 26.9,
                                    25.1, 23.6, 22, 21.5, 19.9, 19.1, 18.2,
                                    17.2, 16.9, 16.2, 15.5, 15.5, 14.8, 14.8,
-                                   14.5, 14.5, 14.5, 13.9, 13.9, 13.9, 12.9, 12.9, 12.9, 12.9)
+                                   14.5, 14.5, 14.5, 13.9, 13.9, 13.9, 12.9, 12.9, 12.9, 12.9),
+                    age_distribution = list(c(0,19,86+104),c(20,29,242+188),c(30,39,74+92),c(40,100,226+70))
 )
 
 
@@ -197,7 +199,8 @@ analysis$add_cohort(author = 'Thompson',
                     cohort_size = 406,
                     times = seq(1,10,by = 1),
                     perc_death = NULL,
-                    perc_alive = c(60, 43.2, 36.7, 30.5, 26.8, 22.3, 20.3, 18.9, 17.2, 13.9)
+                    perc_alive = c(60, 43.2, 36.7, 30.5, 26.8, 22.3, 20.3, 18.9, 17.2, 13.9),
+                    age_distribution = list(c(10,19,87), c(20,29,148), c(30,39,95), c(40,100,76))
 )
 
 
@@ -211,7 +214,9 @@ analysis$add_cohort(author = 'Hartley',
                     cohort_size = 2382,
                     times = c(5),
                     perc_death = NULL,
-                    perc_alive = c(mean_men)
+                    perc_alive = c(mean_men),
+                    age_distribution = list(c(16,20,406),c(21,25,585),c(26,30,517),c(31,35,408),
+                                         c(36,40,255), c(41,45,151),c(46,50,60))
 )
 mean_women = (200*65 + 294*69 + 227*65 + 119*61 + 64*67 + 30*63 + 10*80)/944
 analysis$add_cohort(author = 'Hartley',
@@ -221,7 +226,9 @@ analysis$add_cohort(author = 'Hartley',
                     cohort_size = 944,
                     times = c(5),
                     perc_death = NULL,
-                    perc_alive = c(mean_women)
+                    perc_alive = c(mean_women),
+                    age_distribution = list(c(16,20,200),c(21,25,294),c(26,30,227),c(31,35,119),
+                                         c(36,40,64), c(41,45,30),c(46,50,10))
 )
 
 #_____________________________________________________________
@@ -403,7 +410,9 @@ analysis$add_cohort(author = 'Berg',
                     cohort_size = 2042,
                     times = c(1,3,5,10),
                     perc_death = NULL,
-                    perc_alive = c(69.3, 50.9, 41.8, 29.4)
+                    perc_alive = c(69.3, 50.9, 41.8, 29.4),
+                    age_distribution = list(c(15,19,307), c(20,24,509), c(25,29,413), c(30,34,277),
+                                            c(35,39,158), c(40,44,141), c(45,49,86), c(50,54,57), c(55,59,38), c(60,100,56))
 )
 
 #_____________________________________________________________
@@ -491,6 +500,9 @@ analysis$add_cohort(author = 'Munchbach',
 
 #_____________________________________________________________
 #  Lindhart (Table 33, see excel calculations)
+ages_men = list(c(0,14,4.9), c(15,19,11.6), c(20,24,16.6), c(25,29,12.8), c(30,34,10.8), c(35,44,14.8), c(45,54,12), c(55,64,9.5), c(65,100,7) )
+ages_women = list(c(0,14,5.2), c(15,19,13.1), c(20,24,18.4), c(25,29,16.4), c(30,34,11.4), c(35,44,13.3), c(45,54,7), c(55,64,7.5), c(65,100,7.7) )
+
 analysis$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'men_1930',
@@ -498,7 +510,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1162,
                     times = c(1,2,3,4,5),
                     perc_death = c(44.7,56.2,61.6,64.9,68.3),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_men
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -508,7 +521,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1140,
                     times = c(1,2,3,4),
                     perc_death = c(42.5, 52.9, 59.1, 64),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_men
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -518,7 +532,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1138,
                     times = c(1,2,3),
                     perc_death = c(44.4, 54.6, 60.6),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_men
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -528,7 +543,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1004,
                     times = c(1,2),
                     perc_death = c(45.6, 55.7),
-                    perc_alive = NULL
+                    perc_alive = NULL,                    
+                    age_distribution = ages_men
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -538,7 +554,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 968,
                     times = c(1),
                     perc_death = c(42.5),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_men
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -548,7 +565,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1383,
                     times = c(1,2,3,4,5),
                     perc_death = c(42.4, 56.5, 63.4, 67.1, 70.9),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_women
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -558,7 +576,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1342,
                     times = c(1,2,3,4),
                     perc_death = c(42.5, 54.6, 61.9, 66.6),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_women
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -568,7 +587,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1398,
                     times = c(1,2,3),
                     perc_death = c(44.6, 54.3, 60.7),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_women
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -578,7 +598,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1205,
                     times = c(1,2),
                     perc_death = c(45.1, 56.1),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_women
 )
 
 analysis$add_cohort(author = 'Lindhart',
@@ -588,7 +609,8 @@ analysis$add_cohort(author = 'Lindhart',
                     cohort_size = 1057,
                     times = c(1),
                     perc_death = c(44.2),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = ages_women
 )
 
 
@@ -601,7 +623,8 @@ analysis$add_cohort(author = 'Magnusson',
                     cohort_size = 133,
                     times = c(4,10,20),
                     perc_death = c(9.8, 16.5, 20.3),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = list(c(10,14,4), c(15,19,33), c(20,24,44), c(25,29,23),c(30,39,20),c(40,50,9))
 )
 
 analysis$add_cohort(author = 'Magnusson',
@@ -611,7 +634,8 @@ analysis$add_cohort(author = 'Magnusson',
                     cohort_size = 280,
                     times = c(4,10,20),
                     perc_death = c(7.5, 14.7, 17.9),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = list(c(10,14,20), c(15,19,61), c(20,24,72), c(25,29,55),c(30,39,55),c(40,50,17))
 )
 
 analysis$add_cohort(author = 'Magnusson',
@@ -621,7 +645,8 @@ analysis$add_cohort(author = 'Magnusson',
                     cohort_size = 166,
                     times = c(4,10,20),
                     perc_death = c(55.4, 71.1, 75.3),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = list(c(10,14,5), c(15,19,32), c(20,24,49), c(25,29,38),c(30,39,29),c(40,100,13))
 )
 
 analysis$add_cohort(author = 'Magnusson',
@@ -631,7 +656,8 @@ analysis$add_cohort(author = 'Magnusson',
                     cohort_size = 213,
                     times = c(4,10,20),
                     perc_death = c(68.1, 74.6, 77.5),
-                    perc_alive = NULL
+                    perc_alive = NULL,
+                    age_distribution = list(c(8,14,11), c(15,19,34), c(20,24,52), c(25,29,46),c(30,39,52),c(40,56,18))
 )
 
 
