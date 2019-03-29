@@ -23,7 +23,7 @@ Cohort <- R6Class(
     description = '',
     formatted_data = NULL,
     age_distribution = NULL,
-    mortality_rate=NULL,
+    mu=NULL,
   
     initialize = function(id, author, smear_status, cohort_name, year_range,
                           cohort_size, times, perc_death, perc_alive, age_distribution=NULL){
@@ -130,16 +130,13 @@ Cohort <- R6Class(
         self$description = str
       }
       
-      # format the data
-      if (!is.null(self$cohort_size)){
-        self$format_data()
-      }
+      
     },
     
     format_data = function(){
       n_rows = length(self$times) - 1
       u = rep(NA,n_rows)
-      formatted_data = data.frame('t_start'=u, 'delta_t'=u, 'n_at_risk'=u, 'n_new_deaths'=u, 'smear_status'=u, 'cohort_id'=u)
+      formatted_data = data.frame('t_start'=u, 'delta_t'=u, 'n_at_risk'=u, 'n_new_deaths'=u, 'smear_status'=u, 'cohort_id'=u, 'mu'=u)
       
       for (i in 1:n_rows){  # i represent the index of the starting time
         formatted_data$t_start[i] = self$times[i]
@@ -148,6 +145,7 @@ Cohort <- R6Class(
         formatted_data$n_new_deaths[i] = round((self$perc_death[i+1] - self$perc_death[i])*self$cohort_size/100)
         formatted_data$smear_status[i] = self$smear_status
         formatted_data$cohort_id[i] = self$id
+        formatted_data$mu[i] = self$mu
         
         if (formatted_data$n_at_risk[i] < formatted_data$n_new_deaths[i]){
           print("WARNING: more dead persons than at_risk persons")
@@ -159,7 +157,7 @@ Cohort <- R6Class(
     
     work_out_mortality = function(mortality_data){
       if (is.null(self$age_distribution)){
-        self$mortality_rate = 1/55  # hard-code
+        self$mu = 1/55  # hard-code
       }else{
         recruitment_year = floor(mean(self$year_range))
         # find appropriate mortality table
@@ -188,7 +186,7 @@ Cohort <- R6Class(
             cumul_rates = cumul_rates + rates_by_age[age+1] * cat[3]/(1+year_max-cat[1])
           }
         }
-        self$mortality_rate = cumul_rates/pop
+        self$mu = cumul_rates/pop
       }  
     },
     
@@ -243,6 +241,11 @@ Analysis <- R6Class(
         
         # work out mortality rate
         cohort$work_out_mortality(self$mortality_data)
+        
+        # format the data
+        if (!is.null(cohort$cohort_size)){
+          cohort$format_data()
+        }
 
         if (!is.null(cohort$age_distribution)){
           self$n_age_available = self$n_age_available+1
@@ -255,7 +258,7 @@ Analysis <- R6Class(
       },
      
       produce_main_dataframe = function(){
-        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(),'smear_status'=character(), 'cohort_id'=integer())
+        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(),'smear_status'=character(), 'cohort_id'=integer(), 'mu'=numeric())
         
         for (c in self$cohorts){
           self$all_data = rbind(self$all_data, c$formatted_data)
@@ -337,7 +340,7 @@ Analysis <- R6Class(
             y_k = self$all_data$n_new_deaths[j]
             n_k = self$all_data$n_at_risk[j]
             
-            params$mu = self$cohorts[[self$all_data$cohort_id[j]]]$mortality_rate
+            params$mu = self$all_data$mu[j]
            
             # evaluate the probability of death between t_k and t_k+1
             if (!random_effects){
@@ -567,6 +570,36 @@ Analysis <- R6Class(
         }
       },
            
+      run_mcmc_stan =function(model,n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE){
+        print("Loading rstan...")
+        library(rstan)
+        print("... done")
+
+        dat    <- self$all_data[analysis$all_data$smear_status %in% smear_status,]
+        dat$id <- as.integer(factor(dat$cohort_id))
+        
+        standat <- list(
+          N            = nrow(dat),
+          K            = max(dat$id),
+          n_at_risk    = dat$n_at_risk,
+          n_new_deaths = dat$n_new_deaths,
+          t_start      = dat$t_start,
+          delta_t      = dat$delta_t,
+          cohort_id    = dat$id,
+          mu           = dat$mu
+        )
+        
+        options(mc.cores = parallel::detectCores())
+        
+        #------  non-hierarchical model  ------
+        # fit the model
+        fit1 <- stan(file = "fixed_effect_model.stan", 
+                     data = standat,
+                     chains = 1, iter = n_iterations, warmup = n_burned, thin = 1, 
+                     init = "random")
+        
+      },
+      
       plot_ll_surface = function(model, param_ranges, n_per_axis, smear_status=c('positive')){
         if (model==1){
           mu = self$mu
@@ -1003,7 +1036,7 @@ Outputs <- R6Class(
     
     generate_age_distributions = function(){
       filename = 'outputs/age_distributions'
-      open_figure(filename, 'pdf', w=8.27, h=11.69)
+      open_figure(filename, 'png', w=8.27, h=11.69)
       bot=0.8
       lef=0.5
       top=0.1
@@ -1041,7 +1074,6 @@ Outputs <- R6Class(
           
           title = paste('Cohort ', coh$id, sep='')
           hist(ages,breaks=breaks_,xlab =x_lab , ylab = 'density', main=title, xlim=c(0,80) )
-         
         }
       }
       
@@ -1070,5 +1102,5 @@ strBreakInLines <- function(s, breakAt=90, prepend="") {
 }
 
 source('load_data.R')
-outputs = Outputs$new(analysis)
-outputs$generate_age_distributions()
+# outputs = Outputs$new(analysis)
+# outputs$generate_age_distributions()
