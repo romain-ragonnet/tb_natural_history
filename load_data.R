@@ -1,5 +1,5 @@
 setwd('C:/Users/rrag0004/Models/tb_natural_history/')
-source('review_classes.R')
+#source('review_classes.R')
 
 analysis = Analysis$new()
 
@@ -53,7 +53,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
 #     smear_pos then smear_neg
 analysis$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
-                    cohort_name = '22_25',
+                    cohort_name = '22_25_smear_unsure',
                     year_range = c(1922, 1925),
                     cohort_size = 103,
                     times = c(2, 4, 6, 8, 10),
@@ -63,7 +63,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
 
 analysis$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
-                    cohort_name = '26_29',
+                    cohort_name = '26_29_smear_unsure',
                     year_range = c(1926, 1929),
                     cohort_size = 110,
                     times = c(2, 4, 6),
@@ -73,7 +73,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
 
 analysis$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
-                    cohort_name = '30_33',
+                    cohort_name = '30_33_smear_unsure',
                     year_range = c(1930, 1933),
                     cohort_size = 220,
                     times = c(2, 4),
@@ -83,7 +83,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
 
 analysis$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
-                    cohort_name = '34_35',
+                    cohort_name = '34_35_smear_unsure',
                     year_range = c(1934, 1935),
                     cohort_size = 164,
                     times = c(2),

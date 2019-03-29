@@ -197,30 +197,6 @@ Cohort <- R6Class(
            xlab='time (years)', ylab='cumulative death (%)', xlim=c(0,30), ylim=c(0,100),
            pch=18, cex=1.5
            )
-    },
-    
-    get_plot_color = function(){
-      color=list(
-        "Baart De La Faille" = my_blue,
-        "Buhl" = my_red,
-        "Griep" = my_purple,
-        "Tattersall" = my_gold,
-        "Thompson" = my_brown,
-        "Hartley" = 'black',
-        "Braeuning" = my_green,
-        "Backer" = my_grey,
-        "Trail" = 'blue',
-        "Sinding-Larsen" = 'purple',
-        "Furth" = 'darkgreen',
-        "Berg" = 'yellow',
-        "Munchbach" = "orange",
-        "Lindhart" = 'black',
-        "Magnusson" = 'green'
-      )
-      # determine an alpha between 0.5 and 1
-      # 0.5 for the oldest times (1905), 1 for the most recent (1940) 
-      alpha = (mean(self$year_range) - 1905)/35
-      add.alpha(color[[self$author]], alpha)      
     }
   )
 )
@@ -241,6 +217,7 @@ Analysis <- R6Class(
       burned_iterations = 0,
       cohort_ids = c(),
       mortality_data = list(),
+      n_age_available = 0,
       
       initialize = function(){
         self$read_mortality_data()
@@ -267,6 +244,10 @@ Analysis <- R6Class(
         # work out mortality rate
         cohort$work_out_mortality(self$mortality_data)
 
+        if (!is.null(cohort$age_distribution)){
+          self$n_age_available = self$n_age_available+1
+        }
+        
         self$cohorts = c(self$cohorts, cohort)
         self$n_cohorts = cohort_id
         str=paste("Cohort ", cohort_id, ' / size: ', cohort_size, ' / author: ', author, sep='')
@@ -624,7 +605,7 @@ Analysis <- R6Class(
         n_coh = length(self$cohorts)
         line_height = 1.8
         filename = 'outputs/dates'
-        open_figure(filename, 'png', w=14, h=7)
+        open_figure(filename, 'pdf', w=14, h=7)
         
         par(mar=c(5.1,12,3,1))
         
@@ -653,6 +634,8 @@ Analysis <- R6Class(
                                    plot_model=FALSE, model=1, mu=NA, mu_t=NA, gamma=NA,kappa=NA, alpha=NA, from_mcmc=FALSE){
         xmax = 0
         cohorts_to_plot = c()
+        colours_by_smear = list('positive'='black', 'negative'='gray50')
+        windowsFonts(A = windowsFont("Times New Roman"))
             
         # populate cohort_to_plot and determine xmax
         for (coh in self$cohorts){
@@ -676,14 +659,21 @@ Analysis <- R6Class(
           filename= paste(folder_name, 'best_fit_to_data', sep='')
         }
         open_figure(filename, 'png', w=12, h=9)
-        plot(0,0,xlim=c(0,xmax), ylim=c(0,100), xlab='time (years)',
-             ylab='death %', main=title)
+        plot(0,0,xlim=c(0,xmax), ylim=c(0,100), xlab='time after recruitment (years)',
+             ylab='cumulative death %', main=title,bty='n',cex.lab=1.3)
         count = 0
+        count_sp = 0
+        count_sn = 0
         for (coh in cohorts_to_plot){
           count = count+1
-          color = coh$get_plot_color()
-          points(coh$times, coh$perc_death, col=color, pch=18, cex=1.5)
-          lines(coh$times, coh$perc_death, col=color, lwd=3)
+          color = colours_by_smear[[coh$smear_status]]
+          points(coh$times, coh$perc_death, col=color, pch=20, cex=1)
+          lines(coh$times, coh$perc_death, col=color, lwd=2)
+          if (coh$smear_status == 'positive'){
+            count_sp = count_sp + 1
+          }else if (coh$smear_status == 'negative'){
+            count_sn = count_sn + 1
+          }
         }
         if (plot_model){
           t = seq(0,30,by=0.01)
@@ -699,6 +689,11 @@ Analysis <- R6Class(
           }
          
         }
+        txt1 = paste('smear-positive (n=',count_sp,')',sep='')
+        txt2 = paste('smear-negative (n=',count_sn,')',sep='')
+        
+        legend(x = 20, y=50,legend = c(txt1, txt2),lwd=c(3,3),cex=1.3,col = c(colours_by_smear$positive,colours_by_smear$negative),bty = 'n')
+        
         dev.off()
       },
       
@@ -1004,6 +999,53 @@ Outputs <- R6Class(
 
       dev.off()
       
+    },
+    
+    generate_age_distributions = function(){
+      filename = 'outputs/age_distributions'
+      open_figure(filename, 'pdf', w=8.27, h=11.69)
+      bot=0.8
+      lef=0.5
+      top=0.1
+      rig=0.
+      par(mfrow=c(5,4),
+          mai=c(bot,lef,top,rig))
+      
+      count = 0
+      for (coh in self$analysis$cohorts){
+        if (!is.null(coh$age_distribution)){
+          count = count + 1
+          x_lab='age (years)'
+          if (count>16){ # last row
+            par(mai=c(bot,lef,top,rig))
+            x_lab='age (years)'
+          }
+          ymax=0
+          for (cat in coh$age_distribution){
+            if (cat[3]>ymax){
+              ymax = cat[3]
+            }
+          }
+          
+          # transform age distributions into list of 'representative' ages so we can plot a histogram
+          ages = c()
+          breaks_ = c()
+          for (cat in coh$age_distribution){
+            h=cat[3]
+            low=cat[1]
+            high=1+cat[2]
+            ages = c(ages,rep(low+1,h))
+            breaks_ = c(breaks_, low)
+          }
+          breaks_ = c(breaks_, 80)
+          
+          title = paste('Cohort ', coh$id, sep='')
+          hist(ages,breaks=breaks_,xlab =x_lab , ylab = 'density', main=title, xlim=c(0,80) )
+         
+        }
+      }
+      
+      dev.off()
     }
   )
 )
@@ -1026,3 +1068,7 @@ strBreakInLines <- function(s, breakAt=90, prepend="") {
   }
   return(res)
 }
+
+source('load_data.R')
+outputs = Outputs$new(analysis)
+outputs$generate_age_distributions()
