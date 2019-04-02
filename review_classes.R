@@ -108,7 +108,7 @@ Cohort <- R6Class(
         "Tattersall" = 'Sputum-positive cases attending Reading (UK) dispensary between 1914 and 1940.',
         "Thompson" = 'All sputum-positive TB patients occurring in a compact industrial area in Middlesex County.',
         "Hartley" = 'Retrospective cohort study of cases treated for TB at Brompton Hospital.',
-        "Braeuning" = 'TB dispensary patients from Szczecin, Poland (then known as Stettin, Germany.',
+        "Braeuning" = 'TB dispensary patients from Szczecin, Poland (then known as Stettin, Germany).',
         "Backer" = 'Patients notified to the Board of Health in Oslo.',
         "Trail" = 'Cohort study among patients of the King Edward VII sanatorium in Midhurst.',
         "Sinding-Larsen" = 'Cohort study in Denmark among sanatorium patients.',
@@ -590,7 +590,9 @@ Analysis <- R6Class(
         )
         
         options(mc.cores = parallel::detectCores())
+        rstan_options(auto_write = TRUE)
         
+        shell.exec("mingwstartup.bat")
         #------  non-hierarchical model  ------
         # fit the model
         fit1 <- stan(file = "fixed_effect_model.stan", 
@@ -638,7 +640,7 @@ Analysis <- R6Class(
         n_coh = length(self$cohorts)
         line_height = 1.8
         filename = 'outputs/dates'
-        open_figure(filename, 'pdf', w=14, h=7)
+        open_figure(filename, 'png', w=14, h=12)
         
         par(mar=c(5.1,12,3,1))
         
@@ -647,7 +649,11 @@ Analysis <- R6Class(
         axis(side=1)
         
         cpt=0
+        sizes = c()
         for (cohort in self$cohorts){
+          
+          sizes = c(sizes, cohort$cohort_size)
+          
           cpt = cpt+1
           col='black'
           if (cohort$smear_status == 'negative'){
@@ -661,6 +667,7 @@ Analysis <- R6Class(
         }
         text(x=1900, y=cpt*line_height+2, labels='N', pos=4)
         dev.off()
+        return(sizes)
       },
       
       plot_multi_cohort = function(smear_status=c('positive', 'negative'), 
