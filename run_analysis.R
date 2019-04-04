@@ -5,14 +5,16 @@ source('review_classes.R')
 model = 1
 random_effects = FALSE
 update_type = 'block_wise' # 'block_wise'   # 'component_wise'
-smear_status = c('negative')
+smear_status = c('positive')
 n_chains=1
 n_iterations = 2000
 n_burned = 1000
 parallel=TRUE
+estimate_mu = TRUE
 
 analysis$run_mcmc_stan(model = model,n_chains=n_chains,n_iterations = n_iterations,n_burned = n_burned,
-                       smear_status = smear_status, random_effects = random_effects,parallel=parallel)
+                       smear_status = smear_status, random_effects = random_effects,parallel=parallel,
+                       estimate_mu = estimate_mu)
 
 #analysis$run_metropolis(model = model, n_iterations = n_iterations, n_burned = n_burned,
 #                        smear_status = smear_status,random_effects=random_effects, update_type=update_type)

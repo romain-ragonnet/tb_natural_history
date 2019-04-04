@@ -24,6 +24,7 @@ Cohort <- R6Class(
     formatted_data = NULL,
     age_distribution = NULL,
     mu=NULL,
+    mu_sd=NULL,
   
     initialize = function(id, author, smear_status, cohort_name, year_range,
                           cohort_size, times, perc_death, perc_alive, age_distribution=NULL){
@@ -146,6 +147,8 @@ Cohort <- R6Class(
         formatted_data$smear_status[i] = self$smear_status
         formatted_data$cohort_id[i] = self$id
         formatted_data$mu[i] = self$mu
+        formatted_data$mu_sd[i] = self$mu_sd
+        
         
         if (formatted_data$n_at_risk[i] < formatted_data$n_new_deaths[i]){
           print("WARNING: more dead persons than at_risk persons")
@@ -157,8 +160,10 @@ Cohort <- R6Class(
     
     work_out_mortality = function(mortality_data){
       if (is.null(self$age_distribution)){
-        self$mu = 1/55  # hard-code
+        self$mu = 0.01 # hard-code
+        self$mu_sd = 0.002 #
       }else{
+        self$mu_sd = 0.001
         recruitment_year = floor(mean(self$year_range))
         # find appropriate mortality table
         if (grepl('men',self$cohort_name)){
@@ -219,6 +224,7 @@ Analysis <- R6Class(
       n_age_available = 0,
       smear_status = NULL,
       random_effects = FALSE,
+      estimate_mu = FALSE,
       
       initialize = function(){
         self$read_mortality_data()
@@ -261,7 +267,7 @@ Analysis <- R6Class(
       },
      
       produce_main_dataframe = function(){
-        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(),'smear_status'=character(), 'cohort_id'=integer(), 'mu'=numeric())
+        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(),'smear_status'=character(), 'cohort_id'=integer(), 'mu'=numeric(),'mu_sd'=numeric())
         
         for (c in self$cohorts){
           self$all_data = rbind(self$all_data, c$formatted_data)
@@ -573,29 +579,19 @@ Analysis <- R6Class(
         }
       },
            
-      run_mcmc_stan =function(model,n_chains, n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE, parallel=TRUE){
+      run_mcmc_stan =function(model,n_chains, n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE, parallel=TRUE, estimate_mu=TRUE){
         
         self$smear_status = smear_status
         self$random_effects = random_effects
+        self$estimate_mu = estimate_mu
         
         print("Loading rstan...")
         library(rstan)
         print("... done")
 
         dat    <- self$all_data[analysis$all_data$smear_status %in% smear_status,]
-        dat$id <- as.integer(factor(dat$cohort_id))
-        
-        standat <- list(
-          N            = nrow(dat),
-          K            = max(dat$id),
-          n_at_risk    = dat$n_at_risk,
-          n_new_deaths = dat$n_new_deaths,
-          t_start      = dat$t_start,
-          delta_t      = dat$delta_t,
-          cohort_id    = dat$id,
-          mu           = dat$mu
-        )
-        
+        dat$id <- as.integer(factor(dat$cohort_id))  # create new cohort indices
+
         if (parallel && n_chains>1){
           options(mc.cores = parallel::detectCores())
         }else{
@@ -603,13 +599,57 @@ Analysis <- R6Class(
         }
         rstan_options(auto_write = TRUE)
         
-        #------  non-hierarchical model  ------
+        if (estimate_mu){
+          # get mu and sd by cohort
+          mu_by_cohort = c()
+          mu_sd_by_cohort = c()
+          coh_id=-1
+          for (j in 1:nrow(dat)){
+            if (dat$cohort_id[j] > coh_id){
+              mu_by_cohort = c(mu_by_cohort, dat$mu[j])
+              mu_sd_by_cohort = c(mu_sd_by_cohort, dat$mu_sd[j])
+              coh_id = dat$cohort_id[j]
+            }
+          }
+          
+          standat <- list(
+            N            = nrow(dat),
+            K            = max(dat$id),
+            n_at_risk    = dat$n_at_risk,
+            n_new_deaths = dat$n_new_deaths,
+            t_start      = dat$t_start,
+            delta_t      = dat$delta_t,
+            cohort_id    = dat$id,
+            mu_by_cohort = mu_by_cohort,
+            mu_sd_by_cohort = mu_sd_by_cohort
+          )
+        }else{
+          standat <- list(
+            N            = nrow(dat),
+            K            = max(dat$id),
+            n_at_risk    = dat$n_at_risk,
+            n_new_deaths = dat$n_new_deaths,
+            t_start      = dat$t_start,
+            delta_t      = dat$delta_t,
+            cohort_id    = dat$id,
+            mu           = dat$mu
+          )
+        }
+        
+        if (!random_effects && !estimate_mu){
+          stan_file = "fixed_effect_model.stan" 
+        }else if(!random_effects && estimate_mu){
+          stan_file = "fixed_effect_model_fitted_mu.stan"
+        }else{
+          print("Fitting version not yet implemented")
+        }
+        
         # fit the model
-        self$stan_fit <- stan(file = "fixed_effect_model.stan",
+        print("Start Stan fit")
+        self$stan_fit <- stan(file = stan_file,
                      data = standat, chains=n_chains,
                      iter = n_iterations, warmup = n_burned, thin = 1, 
                      init = "random")
-        
 
       },
       
@@ -1111,6 +1151,9 @@ Outputs <- R6Class(
       base_path = paste('outputs/stan/',str_effect,'/',self$analysis$smear_status[1],'/',sep='')
       
       pars <- c("mu_t", "gamma")
+      if (self$analysis$estimate_mu){
+        pars = c(pars, "e_mu")
+      }
       #pars <- c("lambda_mu_t", "lambda_gamma", "sigma_mu_t", "sigma_gamma")
       # summary stats
       print(summary(fit,pars=pars)$summary)
