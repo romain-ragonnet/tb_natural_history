@@ -45,9 +45,7 @@ data {
   int<lower=0> n_new_deaths[N];
   vector<lower=0>[N] t_start;
   vector<lower=0>[N] delta_t;
-
-  // known constant for intensity rate in Markov model (R -> D) cohort-dependent
-  real<lower=0> mu[N];
+  vector<lower=0>[N] mu;
 
 }
 
@@ -59,8 +57,7 @@ parameters {
 
 }
 
-transformed parameters {
-
+model {
   vector[N] p;
 
   for (i in 1:N) {
@@ -70,14 +67,10 @@ transformed parameters {
                       mu_t,
                       gamma);
   }
-
-}
-
-model {
-
   // binomial likelihood (vectorised)
   n_new_deaths ~ binomial(n_at_risk, p);
 
   // priors (all improper uniform, so not defined here)
 
 }
+

@@ -4,16 +4,21 @@ source('review_classes.R')
 # sampling options
 model = 1
 random_effects = FALSE
-update_type = 'component_wise' # 'block_wise'   # 'component_wise'
+update_type = 'block_wise' # 'block_wise'   # 'component_wise'
 smear_status = c('positive')
-n_iterations = 2
-n_burned = 1
+n_chains=4
+n_iterations = 2000
+n_burned = 1000
+parallel=TRUE
 
-analysis$run_mcmc_stan(model = model,n_iterations = n_iterations,n_burned = n_burned,smear_status = smear_status, random_effects = random_effects)
+analysis$run_mcmc_stan(model = model,n_chains=n_chains,n_iterations = n_iterations,n_burned = n_burned,
+                       smear_status = smear_status, random_effects = random_effects,parallel=parallel)
 
-# analysis$run_metropolis(model = model, n_iterations = n_iterations, n_burned = n_burned,
+#analysis$run_metropolis(model = model, n_iterations = n_iterations, n_burned = n_burned,
 #                        smear_status = smear_status,random_effects=random_effects, update_type=update_type)
 
-# outputs = Outputs$new(analysis)
+outputs = Outputs$new(analysis)
+outputs$process_stan_outputs()
+
 # outputs$produce_mcmc_outputs(model = model, smear_status = smear_status, random_effects=random_effects)
 

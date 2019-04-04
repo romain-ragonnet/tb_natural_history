@@ -211,6 +211,7 @@ Analysis <- R6Class(
       proposal_sd = list('gamma'=0.01, 'mu_t'=0.01, 'kappa'=0.01, 'alpha'= 0.02, 'lambda_mu_t'=0.05, 'sigma_mu_t'=0.05,'lambda_gamma'=0.1, 'sigma_gamma'=0.1),  
       mu = 1/40,
       metropolis_records = NULL,
+      stan_fit = NULL,
       acceptance_ratios = list(),
       burned_iterations = 0,
       cohort_ids = c(),
@@ -570,7 +571,7 @@ Analysis <- R6Class(
         }
       },
            
-      run_mcmc_stan =function(model,n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE){
+      run_mcmc_stan =function(model,n_chains, n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE, parallel=TRUE){
         print("Loading rstan...")
         library(rstan)
         print("... done")
@@ -589,17 +590,21 @@ Analysis <- R6Class(
           mu           = dat$mu
         )
         
-        options(mc.cores = parallel::detectCores())
+        if (parallel && n_chains>1){
+          options(mc.cores = parallel::detectCores())
+        }else{
+          options(mc.cores = 1)
+        }
         rstan_options(auto_write = TRUE)
         
-        shell.exec("mingwstartup.bat")
         #------  non-hierarchical model  ------
         # fit the model
-        fit1 <- stan(file = "fixed_effect_model.stan", 
-                     data = standat,
-                     chains = 1, iter = n_iterations, warmup = n_burned, thin = 1, 
+        self$stan_fit <- stan(file = "fixed_effect_model.stan",
+                     data = standat, chains=n_chains,
+                     iter = n_iterations, warmup = n_burned, thin = 1, 
                      init = "random")
         
+
       },
       
       plot_ll_surface = function(model, param_ranges, n_per_axis, smear_status=c('positive')){
@@ -1085,6 +1090,37 @@ Outputs <- R6Class(
       }
       
       dev.off()
+    },
+    
+    process_stan_outputs = function(){
+      fit = self$analysis$stan_fit
+      outputs = as.data.frame(fit)
+      
+      pars <- c("mu_t", "gamma")
+      #pars <- c("lambda_mu_t", "lambda_gamma", "sigma_mu_t", "sigma_gamma")
+      # summary stats
+      print(summary(fit,pars=pars)$summary)
+      
+      # plots of posterior density
+      filename = 'outputs/stan/posterior_density'
+      open_figure(filename, 'png')
+        p=plot(fit, pars = pars, plotfun = "dens")
+        print(p)
+      dev.off()
+      
+      # plots of trace with warmup
+      filename = 'outputs/stan/trace_with_warmup'
+      open_figure(filename, 'png')
+        p =plot(fit, pars = pars, plotfun = "trace", inc_warmup = TRUE)
+        print(p)
+      dev.off()
+      
+      # plots of trace without warmup
+      filename = 'outputs/stan/trace_without_warmup'
+      open_figure(filename, 'png')
+        p=plot(fit, pars = pars, plotfun = "trace", inc_warmup = FALSE)
+        print(p)
+      dev.off()
     }
   )
 )
@@ -1108,6 +1144,6 @@ strBreakInLines <- function(s, breakAt=90, prepend="") {
   return(res)
 }
 
-source('load_data.R')
+#source('load_data.R')
 # outputs = Outputs$new(analysis)
 # outputs$generate_age_distributions()
