@@ -3,12 +3,12 @@ source('review_classes.R')
 
 # sampling options
 model = 1
-random_effects = FALSE
+random_effects = TRUE
 update_type = 'block_wise' # 'block_wise'   # 'component_wise'
 smear_status = c('positive')
 n_chains=1
-n_iterations = 2000
-n_burned = 1000
+n_iterations = 20
+n_burned = 10
 parallel=TRUE
 estimate_mu = TRUE
 

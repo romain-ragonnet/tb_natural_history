@@ -640,6 +640,8 @@ Analysis <- R6Class(
           stan_file = "fixed_effect_model.stan" 
         }else if(!random_effects && estimate_mu){
           stan_file = "fixed_effect_model_fitted_mu.stan"
+        }else if(random_effects && estimate_mu){
+          stan_file = "random_effect_model_fitted_mu.stan"
         }else{
           print("Fitting version not yet implemented")
         }
