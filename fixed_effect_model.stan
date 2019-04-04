@@ -52,8 +52,8 @@ data {
 parameters {
 
   // fixed effect parameters
-  real<lower=0> mu_t;  // intensity rate in Markov model (component of T -> D)
-  real<lower=0> gamma; // intensity rate in Markov model (T -> R)
+  real<lower=0, upper=1> mu_t;  // intensity rate in Markov model (component of T -> D)
+  real<lower=0, upper=1> gamma; // intensity rate in Markov model (T -> R)
 
 }
 
