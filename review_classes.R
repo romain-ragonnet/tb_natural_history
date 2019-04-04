@@ -1098,7 +1098,7 @@ Outputs <- R6Class(
       dev.off()
     },
     
-    process_stan_outputs = function(){
+    produce_stan_outputs = function(){
       fit = self$analysis$stan_fit
       outputs = as.data.frame(fit)
       
