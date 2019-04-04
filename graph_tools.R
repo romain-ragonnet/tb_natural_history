@@ -43,3 +43,24 @@ add.alpha <- function(col, alpha=1){
         function(x) 
           rgb(x[1], x[2], x[3], alpha=alpha))  
 }
+
+
+strBreakInLines <- function(s, breakAt=90, prepend="") {
+  words <- unlist(strsplit(s, " "))
+  if (length(words)<2) return(s)
+  wordLen <- unlist(Map(nchar, words))
+  lineLen <- wordLen[1]
+  res <- words[1]
+  lineBreak <- paste("\n", prepend, sep="")
+  for (i in 2:length(words)) {
+    lineLen <- lineLen+wordLen[i]
+    if (lineLen < breakAt) 
+      res <- paste(res, words[i], sep=" ")
+    else {
+      res <- paste(res, words[i], sep=lineBreak)
+      lineLen <- 0
+    }
+  }
+  return(res)
+}
+

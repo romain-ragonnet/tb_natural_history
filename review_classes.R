@@ -217,6 +217,8 @@ Analysis <- R6Class(
       cohort_ids = c(),
       mortality_data = list(),
       n_age_available = 0,
+      smear_status = NULL,
+      random_effects = FALSE,
       
       initialize = function(){
         self$read_mortality_data()
@@ -572,6 +574,10 @@ Analysis <- R6Class(
       },
            
       run_mcmc_stan =function(model,n_chains, n_iterations, n_burned, smear_status=c('positive'),random_effects=FALSE, parallel=TRUE){
+        
+        self$smear_status = smear_status
+        self$random_effects = random_effects
+        
         print("Loading rstan...")
         library(rstan)
         print("... done")
@@ -1096,27 +1102,35 @@ Outputs <- R6Class(
       fit = self$analysis$stan_fit
       outputs = as.data.frame(fit)
       
+      # work-out output file
+      if (self$analysis$random_effects){
+        str_effect = 'random_effect'
+      }else{
+        str_effect = 'fixed_effect'
+      }
+      base_path = paste('outputs/stan/',str_effect,'/',self$analysis$smear_status[1],'/',sep='')
+      
       pars <- c("mu_t", "gamma")
       #pars <- c("lambda_mu_t", "lambda_gamma", "sigma_mu_t", "sigma_gamma")
       # summary stats
       print(summary(fit,pars=pars)$summary)
       
       # plots of posterior density
-      filename = 'outputs/stan/posterior_density'
+      filename = paste(base_path,'posterior_density',sep='')
       open_figure(filename, 'png')
         p=plot(fit, pars = pars, plotfun = "dens")
         print(p)
       dev.off()
       
       # plots of trace with warmup
-      filename = 'outputs/stan/trace_with_warmup'
+      filename = paste(base_path,'trace_with_warmup',sep='')
       open_figure(filename, 'png')
         p =plot(fit, pars = pars, plotfun = "trace", inc_warmup = TRUE)
         print(p)
       dev.off()
       
       # plots of trace without warmup
-      filename = 'outputs/stan/trace_without_warmup'
+      filename = paste(base_path,'trace_without_warmup',sep='')
       open_figure(filename, 'png')
         p=plot(fit, pars = pars, plotfun = "trace", inc_warmup = FALSE)
         print(p)
@@ -1124,25 +1138,6 @@ Outputs <- R6Class(
     }
   )
 )
-
-strBreakInLines <- function(s, breakAt=90, prepend="") {
-  words <- unlist(strsplit(s, " "))
-  if (length(words)<2) return(s)
-  wordLen <- unlist(Map(nchar, words))
-  lineLen <- wordLen[1]
-  res <- words[1]
-  lineBreak <- paste("\n", prepend, sep="")
-  for (i in 2:length(words)) {
-    lineLen <- lineLen+wordLen[i]
-    if (lineLen < breakAt) 
-      res <- paste(res, words[i], sep=" ")
-    else {
-      res <- paste(res, words[i], sep=lineBreak)
-      lineLen <- 0
-    }
-  }
-  return(res)
-}
 
 source('load_data.R')
 # outputs = Outputs$new(analysis)
