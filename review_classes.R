@@ -1135,6 +1135,10 @@ Outputs <- R6Class(
         p=plot(fit, pars = pars, plotfun = "trace", inc_warmup = FALSE)
         print(p)
       dev.off()
+      
+      # save workspace
+      filename = paste(base_path,'workspace.RData',sep='')
+      save.image(filename)
     }
   )
 )
