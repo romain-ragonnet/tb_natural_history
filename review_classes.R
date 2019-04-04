@@ -1144,6 +1144,6 @@ strBreakInLines <- function(s, breakAt=90, prepend="") {
   return(res)
 }
 
-#source('load_data.R')
+source('load_data.R')
 # outputs = Outputs$new(analysis)
 # outputs$generate_age_distributions()
