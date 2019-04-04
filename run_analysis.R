@@ -10,7 +10,7 @@ n_chains=1
 n_iterations = 20
 n_burned = 10
 parallel=TRUE
-estimate_mu = TRUE
+estimate_mu = FALSE
 
 analysis$run_mcmc_stan(model = model,n_chains=n_chains,n_iterations = n_iterations,n_burned = n_burned,
                        smear_status = smear_status, random_effects = random_effects,parallel=parallel,
