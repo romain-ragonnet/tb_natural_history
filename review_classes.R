@@ -234,7 +234,6 @@ Inputs <- R6Class(
       cohort = Cohort$new(cohort_id, author, smear_status, cohort_name, year_range,
                           cohort_size, times, perc_death, perc_alive, age_distribution)
       
-      self$n_cohorts = self$n_cohorts + 1
       
       if(is.null(cohort_size)){
         return()
@@ -252,6 +251,7 @@ Inputs <- R6Class(
         self$n_age_available = self$n_age_available+1
       }
       
+      self$n_cohorts = self$n_cohorts + 1
       self$cohorts = c(self$cohorts, cohort)
       str=paste("Cohort ", cohort_id, ' / size: ', cohort_size, ' / author: ', author, sep='')
       # print(str)
