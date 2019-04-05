@@ -3,24 +3,18 @@ source('review_classes.R')
 
 # sampling options
 model = 1
+smear_status = c('negative')
+n_chains = 1
+n_iterations = 20000
+n_burned = 10000
 random_effects = TRUE
-update_type = 'block_wise' # 'block_wise'   # 'component_wise'
-smear_status = c('positive')
-n_chains=1
-n_iterations = 20
-n_burned = 10
-parallel=TRUE
 estimate_mu = FALSE
 
-analysis$run_mcmc_stan(model = model,n_chains=n_chains,n_iterations = n_iterations,n_burned = n_burned,
-                       smear_status = smear_status, random_effects = random_effects,parallel=parallel,
-                       estimate_mu = estimate_mu)
+analysis = Analysis$new(smear_status, random_effects, estimate_mu)
 
-#analysis$run_metropolis(model = model, n_iterations = n_iterations, n_burned = n_burned,
-#                        smear_status = smear_status,random_effects=random_effects, update_type=update_type)
+analysis$run_mcmc_stan(model=model, n_chains=n_chains, n_iterations=n_iterations, n_burned=n_burned)
 
 outputs = Outputs$new(analysis)
 outputs$produce_stan_outputs()
-
-# outputs$produce_mcmc_outputs(model = model, smear_status = smear_status, random_effects=random_effects)
+outputs$produce_mcmc_random_effect_graphs_from_stan()
 

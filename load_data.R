@@ -1,14 +1,13 @@
 setwd('C:/Users/rrag0004/Models/tb_natural_history/')
 #source('review_classes.R')
 
-analysis = Analysis$new()
-
+inputs = Inputs$new()
 
 #_____________________________________________________________
 #  Baart de la faille
 
 #     smear_pos
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'positive',
                     cohort_name = '22_25',
                     year_range = c(1922, 1925),
@@ -18,7 +17,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'positive',
                     cohort_name = '26_29',
                     year_range = c(1926, 1929),
@@ -28,7 +27,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'positive',
                     cohort_name = '30_33',
                     year_range = c(1930, 1933),
@@ -38,7 +37,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'positive',
                     cohort_name = '34_35',
                     year_range = c(1934, 1935),
@@ -51,7 +50,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
 
 #_________________
 #     smear_pos then smear_neg
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
                     cohort_name = '22_25_smear_unsure',
                     year_range = c(1922, 1925),
@@ -61,7 +60,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
                     cohort_name = '26_29_smear_unsure',
                     year_range = c(1926, 1929),
@@ -71,7 +70,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
                     cohort_name = '30_33_smear_unsure',
                     year_range = c(1930, 1933),
@@ -81,7 +80,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
                     cohort_name = '34_35_smear_unsure',
                     year_range = c(1934, 1935),
@@ -93,7 +92,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
 
 #_________________
 #     smear_neg
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
                     cohort_name = '22_25_allneg',
                     year_range = c(1922, 1925),
@@ -103,7 +102,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
                     cohort_name = '26_29_allneg',
                     year_range = c(1926, 1929),
@@ -113,7 +112,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
                     cohort_name = '30_33_allneg',
                     year_range = c(1930, 1933),
@@ -123,7 +122,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Baart De La Faille',
+inputs$add_cohort(author = 'Baart De La Faille',
                     smear_status = 'negative',
                     cohort_name = '34_35_allneg',
                     year_range = c(1934, 1935),
@@ -137,7 +136,7 @@ analysis$add_cohort(author = 'Baart De La Faille',
 #_____________________________________________________________
 #  Buhl
 
-analysis$add_cohort(author = 'Buhl',
+inputs$add_cohort(author = 'Buhl',
                     smear_status = 'positive',
                     cohort_name = '25_29',
                     year_range = c(1925, 1929),
@@ -151,7 +150,7 @@ analysis$add_cohort(author = 'Buhl',
 #_____________________________________________________________
 #  Griep
 
-analysis$add_cohort(author = 'Griep',
+inputs$add_cohort(author = 'Griep',
                     smear_status = 'positive',
                     cohort_name = '20_25',
                     year_range = c(1920, 1925),
@@ -161,7 +160,7 @@ analysis$add_cohort(author = 'Griep',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Griep',
+inputs$add_cohort(author = 'Griep',
                     smear_status = 'positive',
                     cohort_name = '25_30',
                     year_range = c(1925, 1930),
@@ -174,7 +173,7 @@ analysis$add_cohort(author = 'Griep',
 
 #_____________________________________________________________
 #  Tattersall
-analysis$add_cohort(author = 'Tattersall',
+inputs$add_cohort(author = 'Tattersall',
                     smear_status = 'positive',
                     cohort_name = '',
                     year_range = c(1914, 1940),
@@ -192,7 +191,7 @@ analysis$add_cohort(author = 'Tattersall',
 #_____________________________________________________________
 #  Thompson
 
-analysis$add_cohort(author = 'Thompson',
+inputs$add_cohort(author = 'Thompson',
                     smear_status = 'positive',
                     cohort_name = '',
                     year_range = c(1928, 1940),
@@ -207,7 +206,7 @@ analysis$add_cohort(author = 'Thompson',
 #_____________________________________________________________
 #  Hartley (from Berg Table 12)
 mean_men = (406*58+585*55+517*55+408*54+255*52+151*56+60*43)/2382
-analysis$add_cohort(author = 'Hartley',
+inputs$add_cohort(author = 'Hartley',
                     smear_status = 'positive',
                     cohort_name = 'Men',
                     year_range = c(1905, 1914),
@@ -219,7 +218,7 @@ analysis$add_cohort(author = 'Hartley',
                                          c(36,40,255), c(41,45,151),c(46,50,60))
 )
 mean_women = (200*65 + 294*69 + 227*65 + 119*61 + 64*67 + 30*63 + 10*80)/944
-analysis$add_cohort(author = 'Hartley',
+inputs$add_cohort(author = 'Hartley',
                     smear_status = 'positive',
                     cohort_name = 'Women',
                     year_range = c(1905, 1914),
@@ -252,7 +251,7 @@ convert_rates_to_perc_alive = function(rates){
 rates = c(39, 31, 21, 17, 12, 6)
 perc_alive_Braeuning = convert_rates_to_perc_alive(rates)
 
-analysis$add_cohort(author = 'Braeuning',
+inputs$add_cohort(author = 'Braeuning',
                     smear_status = 'positive',
                     cohort_name = '',
                     year_range = c(1920, 1921),
@@ -269,7 +268,7 @@ rates_women = c(30.3, 24.3, 18.5, 16.1, 11.8, 9.7, 5.6, 4.5)
 perc_alive_Backer_men = convert_rates_to_perc_alive(rates_men)
 perc_alive_Backer_women = convert_rates_to_perc_alive(rates_women)
 
-analysis$add_cohort(author = 'Backer',
+inputs$add_cohort(author = 'Backer',
                     smear_status = 'positive',
                     cohort_name = 'Men',
                     year_range = c(1911, 1920),
@@ -279,7 +278,7 @@ analysis$add_cohort(author = 'Backer',
                     perc_alive = perc_alive_Backer_men
 )
 
-analysis$add_cohort(author = 'Backer',
+inputs$add_cohort(author = 'Backer',
                     smear_status = 'positive',
                     cohort_name = 'Women',
                     year_range = c(1911, 1920),
@@ -296,7 +295,7 @@ rates_women = c(12.3, 16.7, 13.9, 12.1, 10.4, 7.6)
 perc_alive_Trail_men = convert_rates_to_perc_alive(rates_men)
 perc_alive_Trail_women = convert_rates_to_perc_alive(rates_women)
 
-analysis$add_cohort(author = 'Trail',
+inputs$add_cohort(author = 'Trail',
                     smear_status = 'positive',
                     cohort_name = 'Men',
                     year_range = c(1911, 1928),
@@ -306,7 +305,7 @@ analysis$add_cohort(author = 'Trail',
                     perc_alive = perc_alive_Trail_men
 )
 
-analysis$add_cohort(author = 'Trail',
+inputs$add_cohort(author = 'Trail',
                     smear_status = 'positive',
                     cohort_name = 'Women',
                     year_range = c(1911, 1928),
@@ -321,7 +320,7 @@ analysis$add_cohort(author = 'Trail',
 rates = c(32.3, 9.1, 9.1, 7.3, 7.3, 3.8)
 perc_alive_Sinding= convert_rates_to_perc_alive(rates)
 
-analysis$add_cohort(author = 'Sinding-Larsen',
+inputs$add_cohort(author = 'Sinding-Larsen',
                     smear_status = 'positive',
                     cohort_name = '',
                     year_range = c(1906, 1932),
@@ -334,7 +333,7 @@ analysis$add_cohort(author = 'Sinding-Larsen',
 
 #_____________________________________________________________
 #  Furth smear-pos (from Berg, Table 3)
-analysis$add_cohort(author = 'Furth',
+inputs$add_cohort(author = 'Furth',
                     smear_status = 'positive',
                     cohort_name = '12_15',
                     year_range = c(1912, 1915),
@@ -344,7 +343,7 @@ analysis$add_cohort(author = 'Furth',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Furth',
+inputs$add_cohort(author = 'Furth',
                     smear_status = 'positive',
                     cohort_name = '16_19',
                     year_range = c(1916, 1919),
@@ -354,7 +353,7 @@ analysis$add_cohort(author = 'Furth',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Furth',
+inputs$add_cohort(author = 'Furth',
                     smear_status = 'positive',
                     cohort_name = '20_24',
                     year_range = c(1920, 1924),
@@ -390,7 +389,7 @@ get_perc_death_for_furth = function(year){
 }
 
 for (year in 1912:1924){
-  analysis$add_cohort(author = 'Furth',
+  inputs$add_cohort(author = 'Furth',
                       smear_status = 'negative',
                       cohort_name = as.character(year),
                       year_range = c(year, year+1),
@@ -403,7 +402,7 @@ for (year in 1912:1924){
 #_____________________________________________________________
 #  Berg (Using Nico's spreadsheet)
 
-analysis$add_cohort(author = 'Berg',
+inputs$add_cohort(author = 'Berg',
                     smear_status = 'positive',
                     cohort_name = '',
                     year_range = c(1928, 1934),
@@ -418,7 +417,7 @@ analysis$add_cohort(author = 'Berg',
 #_____________________________________________________________
 #  Munchbach (Using Berg, Table 11)
 
-analysis$add_cohort(author = 'Munchbach',
+inputs$add_cohort(author = 'Munchbach',
                     smear_status = 'positive',
                     cohort_name = 'men_20_21',
                     year_range = c(1920, 1921),
@@ -428,7 +427,7 @@ analysis$add_cohort(author = 'Munchbach',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Munchbach',
+inputs$add_cohort(author = 'Munchbach',
                     smear_status = 'positive',
                     cohort_name = 'men_22_23',
                     year_range = c(1922, 1923),
@@ -438,7 +437,7 @@ analysis$add_cohort(author = 'Munchbach',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Munchbach',
+inputs$add_cohort(author = 'Munchbach',
                     smear_status = 'positive',
                     cohort_name = 'men_24_25',
                     year_range = c(1924, 1925),
@@ -448,7 +447,7 @@ analysis$add_cohort(author = 'Munchbach',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Munchbach',
+inputs$add_cohort(author = 'Munchbach',
                     smear_status = 'positive',
                     cohort_name = 'men_26_27',
                     year_range = c(1926, 1927),
@@ -458,7 +457,7 @@ analysis$add_cohort(author = 'Munchbach',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Munchbach',
+inputs$add_cohort(author = 'Munchbach',
                     smear_status = 'positive',
                     cohort_name = 'women_20_21',
                     year_range = c(1920, 1921),
@@ -468,7 +467,7 @@ analysis$add_cohort(author = 'Munchbach',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Munchbach',
+inputs$add_cohort(author = 'Munchbach',
                     smear_status = 'positive',
                     cohort_name = 'women_22_23',
                     year_range = c(1922, 1923),
@@ -478,7 +477,7 @@ analysis$add_cohort(author = 'Munchbach',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Munchbach',
+inputs$add_cohort(author = 'Munchbach',
                     smear_status = 'positive',
                     cohort_name = 'women_24_25',
                     year_range = c(1924, 1925),
@@ -488,7 +487,7 @@ analysis$add_cohort(author = 'Munchbach',
                     perc_alive = NULL
 )
 
-analysis$add_cohort(author = 'Munchbach',
+inputs$add_cohort(author = 'Munchbach',
                      smear_status = 'positive',
                      cohort_name = 'women_26_27',
                      year_range = c(1926, 1927),
@@ -503,7 +502,7 @@ analysis$add_cohort(author = 'Munchbach',
 ages_men = list(c(0,14,4.9), c(15,19,11.6), c(20,24,16.6), c(25,29,12.8), c(30,34,10.8), c(35,44,14.8), c(45,54,12), c(55,64,9.5), c(65,100,7) )
 ages_women = list(c(0,14,5.2), c(15,19,13.1), c(20,24,18.4), c(25,29,16.4), c(30,34,11.4), c(35,44,13.3), c(45,54,7), c(55,64,7.5), c(65,100,7.7) )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'men_1930',
                     year_range = c(1930, 1931),
@@ -514,7 +513,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_men
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'men_1931',
                     year_range = c(1931, 1932),
@@ -525,7 +524,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_men
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'men_1932',
                     year_range = c(1932, 1933),
@@ -536,7 +535,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_men
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'men_1933',
                     year_range = c(1933, 1934),
@@ -547,7 +546,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_men
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'men_1934',
                     year_range = c(1934, 1935),
@@ -558,7 +557,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_men
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'women_1930',
                     year_range = c(1930, 1931),
@@ -569,7 +568,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_women
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'women_1931',
                     year_range = c(1931, 1932),
@@ -580,7 +579,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_women
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'women_1932',
                     year_range = c(1932, 1933),
@@ -591,7 +590,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_women
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'women_1933',
                     year_range = c(1933, 1934),
@@ -602,7 +601,7 @@ analysis$add_cohort(author = 'Lindhart',
                     age_distribution = ages_women
 )
 
-analysis$add_cohort(author = 'Lindhart',
+inputs$add_cohort(author = 'Lindhart',
                     smear_status = 'positive',
                     cohort_name = 'women_1934',
                     year_range = c(1934, 1935),
@@ -616,7 +615,7 @@ analysis$add_cohort(author = 'Lindhart',
 
 #_____________________________________________________________
 #  Magnusson (Tables 16 (Sm-) p44 and 17(Sm+) p46)
-analysis$add_cohort(author = 'Magnusson',
+inputs$add_cohort(author = 'Magnusson',
                     smear_status = 'negative',
                     cohort_name = 'men',
                     year_range = c(1916, 1935),
@@ -627,7 +626,7 @@ analysis$add_cohort(author = 'Magnusson',
                     age_distribution = list(c(10,14,4), c(15,19,33), c(20,24,44), c(25,29,23),c(30,39,20),c(40,50,9))
 )
 
-analysis$add_cohort(author = 'Magnusson',
+inputs$add_cohort(author = 'Magnusson',
                     smear_status = 'negative',
                     cohort_name = 'women',
                     year_range = c(1916, 1935),
@@ -638,7 +637,7 @@ analysis$add_cohort(author = 'Magnusson',
                     age_distribution = list(c(10,14,20), c(15,19,61), c(20,24,72), c(25,29,55),c(30,39,55),c(40,50,17))
 )
 
-analysis$add_cohort(author = 'Magnusson',
+inputs$add_cohort(author = 'Magnusson',
                     smear_status = 'positive',
                     cohort_name = 'men',
                     year_range = c(1916, 1935),
@@ -649,7 +648,7 @@ analysis$add_cohort(author = 'Magnusson',
                     age_distribution = list(c(10,14,5), c(15,19,32), c(20,24,49), c(25,29,38),c(30,39,29),c(40,100,13))
 )
 
-analysis$add_cohort(author = 'Magnusson',
+inputs$add_cohort(author = 'Magnusson',
                     smear_status = 'positive',
                     cohort_name = 'women',
                     year_range = c(1916, 1935),
@@ -660,15 +659,13 @@ analysis$add_cohort(author = 'Magnusson',
                     age_distribution = list(c(8,14,11), c(15,19,34), c(20,24,52), c(25,29,46),c(30,39,52),c(40,56,18))
 )
 
-
-
 # ___________________________________
 #   Preliminary work
-analysis$produce_main_dataframe()
+# inputs$produce_main_dataframe()
 
-generate_cohort_profiles <- function(analysis){
-  outputs = Outputs$new(analysis)
-  for (coh in analysis$cohorts){
+generate_cohort_profiles <- function(inputs){
+  outputs = Outputs$new(inputs)
+  for (coh in inputs$cohorts){
     outputs$generate_cohort_profile(coh, c(0), c(0))
   }
 }
