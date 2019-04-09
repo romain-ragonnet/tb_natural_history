@@ -601,10 +601,12 @@ Outputs <- R6Class(
       height_plot = length(self$analysis$cohort_ids) + 2 
       
       filename= paste(base_path, 'params_by_cohort',sep='')
-      open_figure(filename, 'png', w=25, h=height_plot + 2)
+      open_figure(filename, 'pdf', w=25, h=height_plot + 2)
       
       layout(matrix(c(1,1,1,2,3,4), 2, 3, byrow = TRUE), 
-             widths=c(1,2,2), heights=c(2,height_plot))
+             widths=c(1,2,2), heights=c(1,height_plot))
+      
+      par(mar=c(0.2, 4.1, 0.2, 2.1))
 
       # Plot graph titlte
       plot(0,0,type='n',bty='n',axes=FALSE,xlab='',ylab='')
@@ -614,15 +616,16 @@ Outputs <- R6Class(
       abline_h = 1.5
       
       # Write cohort indices
+      par(mar=c(7.1, 4.1, 0.2, 2.1))
       cex=5
       x_write = 5
-      plot(0,0,type='n',bty='n',axes=FALSE,xlim=c(0,10),ylim=c(0,height_plot), ,xlab='',ylab='')
+      plot(0,0,type='n',bty='n',axes=FALSE,xlim=c(0,10),ylim=c(0,height_plot), xlab='',ylab='')
       h = 1
       for (i in self$analysis$cohort_ids){
         h = h+1
         text(x = x_write,y=h,labels = i, cex=cex*0.75,adj=0.5)
       }
-      text(x=x_write,y=h+1,labels='Cohort #', cex=cex, font=2,adj=0.5)
+      text(x=x_write,y=h+1,labels='Cohort #', cex=cex,adj=0.5)
       text(x=x_write,y=1,labels='Average*', cex=cex,adj=0.5)
       text(x=x_write,y=0,labels='Fixed-effect', cex=cex,adj=0.5)
       abline(h = abline_h)
@@ -661,7 +664,7 @@ Outputs <- R6Class(
         
         abline(h=abline_h)
         
-        text(x=xmax[[par_base]]/2,y=h+1,labels=par_names[[par_base]], cex=5, font=2,adj=0.5)
+        text(x=xmax[[par_base]]/2,y=h+1,labels=par_names[[par_base]], cex=5,adj=0.5)
       }
       dev.off()
       
