@@ -499,8 +499,7 @@ Analysis <- R6Class(
           options(mc.cores = 1)
         }
         rstan_options(auto_write = TRUE)
-        Sys.setenv(LOCAL_CPPFLAGS = '-march=native')
-        
+
         if (estimate_mu){
           # get mu and sd by cohort
           mu_by_cohort = c()
