@@ -574,9 +574,20 @@ Outputs <- R6Class(
       self$analysis = analysis 
     },
 
-    produce_mcmc_random_effect_graphs_from_stan = function(){
+    produce_mcmc_random_effect_graphs_from_stan = function(fixed_estimates=NA){
+      # fixed_estimates is a list of type list(mu_T=c(lower,median,upper), ...)
       fit = self$analysis$stan_fit
       outputs = as.data.frame(fit)
+      
+      if(is.na(fixed_estimates)){
+        if (self$analysis$smear_status[1] == 'positive'){
+          fixed_estimates=list('mu_t'=c(0.301, 0.307, 0.313), 
+                               'gamma'=c(0.133, 0.139, 0.145))
+        }else{
+          fixed_estimates=list('mu_t'=c(0.018, 0.024, 0.031), 
+                               'gamma'=c(0.090, 0.140, 0.199))
+        }
+      }
       
       # work-out output file
       if (self$analysis$random_effects){
@@ -586,27 +597,71 @@ Outputs <- R6Class(
       }
       base_path = paste('outputs/stan/',str_effect,'/',self$analysis$smear_status[1],'/',sep='')
       
-      filename= paste(base_path, 'params_by_cohort',sep='')
-      open_figure(filename, 'png', w=25, h=length(self$analysis$cohort_ids))
-      par(mfrow=c(1,length(self$analysis$param_bases)))
+      # figure height
+      height_plot = length(self$analysis$cohort_ids) + 2 
       
+      filename= paste(base_path, 'params_by_cohort',sep='')
+      open_figure(filename, 'png', w=25, h=height_plot + 2)
+      
+      layout(matrix(c(1,1,1,2,3,4), 2, 3, byrow = TRUE), 
+             widths=c(1,2,2), heights=c(2,height_plot))
+
+      # Plot graph titlte
+      plot(0,0,type='n',bty='n',axes=FALSE,xlab='',ylab='')
+      title = paste("Smear-",self$analysis$smear_status[1]," TB",sep='')
+      text(0,0,title, cex=6)
+      
+      abline_h = 1.5
+      
+      # Write cohort indices
+      cex=5
+      x_write = 5
+      plot(0,0,type='n',bty='n',axes=FALSE,xlim=c(0,10),ylim=c(0,height_plot), ,xlab='',ylab='')
+      h = 1
+      for (i in self$analysis$cohort_ids){
+        h = h+1
+        text(x = x_write,y=h,labels = i, cex=cex*0.75,adj=0.5)
+      }
+      text(x=x_write,y=h+1,labels='Cohort #', cex=cex, font=2,adj=0.5)
+      text(x=x_write,y=1,labels='Average*', cex=cex,adj=0.5)
+      text(x=x_write,y=0,labels='Fixed-effect', cex=cex,adj=0.5)
+      abline(h = abline_h)
+      
+      # Plot cohort-specific results for each parameter
       xmax = list('gamma'=1,'mu_t'=0.15)
+      par_names = list('gamma'='Self-recovery rate','mu_t'='TB mortality rate')
+      lwd = 4
+      cex=4
+      par(mgp=c(5, 3, 0))
       for (par_base in self$analysis$param_bases){
-        plot(0,0,type='n',main='',xlab=par_base,xlim=c(0,xmax[[par_base]]),ylim=c(0,length(self$analysis$cohort_ids)))
-        h = 0
+        plot(0,0,type='n',main='',bty='n',axes=FALSE, cex.lab = 4,
+             xlim=c(0,xmax[[par_base]]),ylim=c(0,height_plot),xlab='/year',ylab='')
+        axis(side=1, lwd = 3, lwd.ticks = 3, cex.axis=4)
+        h = 1
         for (i in self$analysis$cohort_ids){
           h = h+1
-          par = paste(par_base,"[",h,"]",sep='')
-          print(par)
-          print(class(par))
+          par = paste(par_base,"[",h-1,"]",sep='')
           x = outputs[[par]]
           qt = quantile(x,c(0.025,0.5,0.975),names = FALSE)
-          lines(x = c(qt[1], qt[3]), y=c(h,h))
-          points(x=qt[2], y=h)
-          
-          text(x = 0,y=h,labels = i)
-          
+          lines(x = c(qt[1], qt[3]), y=c(h,h), lwd=lwd)
+          points(x=qt[2], y=h, cex=cex, pch=18)
         }
+        # plot mean estimates based on random-effect model
+        hyper_par_mean = paste('lambda_',par_base,sep='')
+        hyper_par_sd = paste('sigma_',par_base,sep='')
+        ln_means = exp(outputs[[hyper_par_mean]] + 0.5*(outputs[[hyper_par_sd]])**2)
+        qt = quantile(ln_means,c(0.025,0.5,0.975),names = FALSE)
+        lines(x = c(qt[1], qt[3]), y=c(1,1), col='red', lwd=lwd)
+        points(x=qt[2], y=1, col='red', cex=cex, pch=18)
+        
+        # plot estimates based on fixed-effect model
+        qt = fixed_estimates[[par_base]] 
+        lines(x = c(qt[1], qt[3]), y=c(0,0), col='blue', lwd=lwd)
+        points(x=qt[2], y=0, col='blue', cex=cex, pch=18)
+        
+        abline(h=abline_h)
+        
+        text(x=xmax[[par_base]]/2,y=h+1,labels=par_names[[par_base]], cex=5, font=2,adj=0.5)
       }
       dev.off()
       
