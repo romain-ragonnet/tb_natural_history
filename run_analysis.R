@@ -3,7 +3,7 @@ source('review_classes.R')
 
 # sampling options
 model = 1
-smear_status = c('negative')
+smear_status = c('positive')
 n_chains = 1
 n_iterations = 20000
 n_burned = 10000
