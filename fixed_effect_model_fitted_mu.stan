@@ -62,7 +62,7 @@ parameters {
   real<lower=0, upper=1> mu_t;  // intensity rate in Markov model (component of T -> D)
   real<lower=0, upper=1> gamma; // intensity rate in Markov model (T -> R)
 
-  vector<lower=0>[K] e_mu; // estimated cohort-specific natural mortality
+  vector<lower=0,upper=0.05>[K] e_mu; // estimated cohort-specific natural mortality
 
 }
 

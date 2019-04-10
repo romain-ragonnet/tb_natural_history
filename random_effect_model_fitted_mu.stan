@@ -62,11 +62,11 @@ parameters {
   vector<lower=0, upper=1>[K] mu_t;  // TB mortality
   vector<lower=0, upper=1>[K] gamma; // intensity rate in Markov model (T -> R)
   
-  vector<lower=0>[K] e_mu; // estimated cohort-specific natural mortality
+  vector<lower=0, upper=0.03>[K] e_mu; // estimated cohort-specific natural mortality
   
   // hyperparameters
-  real lambda_mu_t;          // location for log normal dist for mu_t
-  real lambda_gamma;         // location for log normal dist for gamma
+  real<lower=0> lambda_mu_t;          // location for log normal dist for mu_t
+  real<lower=0> lambda_gamma;         // location for log normal dist for gamma
   real<lower=0> sigma_mu_t;  // scale for log normal dist for mu_t
   real<lower=0> sigma_gamma; // scale for log normal dist for gamma
 }
@@ -87,8 +87,8 @@ model {
   n_new_deaths ~ binomial(n_at_risk, p);
   
   // distribution for cohort specific parameters (vectorised)
-  mu_t  ~ lognormal(lambda_mu_t,  sigma_mu_t);
-  gamma ~ lognormal(lambda_gamma, sigma_gamma);
+  mu_t  ~ normal(lambda_mu_t,  sigma_mu_t);
+  gamma ~ normal(lambda_gamma, sigma_gamma);
   
   // priors for estimated mu: gamma distributions
   for (j in 1:K) {
