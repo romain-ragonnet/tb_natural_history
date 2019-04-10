@@ -661,11 +661,13 @@ Outputs <- R6Class(
         hyper_par_mean = paste('lambda_',par_base,sep='')
         hyper_par_sd = paste('sigma_',par_base,sep='')
         
-        #ln_means = exp(outputs[[hyper_par_mean]] + 0.5*(outputs[[hyper_par_sd]])**2)
+        #ln_means = exp(outputs[[hyper_par_mean]] + 0.5*(outputs[[hyper_par_sd]])**2)  # lognormal priors
         ln_means = outputs[[hyper_par_mean]]
         qt = quantile(ln_means,c(0.025,0.5,0.975),names = FALSE)
         lines(x = c(qt[1], qt[3]), y=c(1,1), col='red', lwd=lwd)
         points(x=qt[2], y=1, col='red', cex=cex, pch=18)
+        str = paste("Estimates for ",par_base,": ", round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
+        print(str)
         
         # plot estimates based on fixed-effect model
         qt = fixed_estimates[[par_base]] 
