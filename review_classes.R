@@ -457,6 +457,7 @@ Analysis <- R6Class(
       estimate_mu = FALSE,
       analysis_name = '',
       base_path = '',
+      tracked_pars=c(),
       
       initialize = function(smear_status,random_effects,estimate_mu, analysis_name){
         self$inputs = inputs
@@ -469,9 +470,11 @@ Analysis <- R6Class(
         # create directories
         effect_string = 'outputs/stan/fixed_effect'
         if (self$random_effects){effect_string = 'outputs/stan/random_effect'}
-        smear_string = paste(effect_string,'/',self$smear_status[1], sep='')
+        mu_string = paste(effect_string,'/fixed_mu',sep='')
+        if (self$estimate_mu){mu_string = paste(effect_string,'/estimated_mu',sep='')}
+        smear_string = paste(mu_string,'/',self$smear_status[1], sep='')
         with_analysis_name = paste(smear_string,'/',self$analysis_name, sep='')
-        paths = c('outputs', 'outputs/stan',effect_string, smear_string, with_analysis_name)
+        paths = c('outputs', 'outputs/stan',effect_string, mu_string, smear_string, with_analysis_name)
         self$base_path = paste(with_analysis_name,'/',sep='') 
         for (path in paths){
           if (!file.exists(path)){
@@ -548,16 +551,16 @@ Analysis <- R6Class(
         
         if (!random_effects && !estimate_mu){
           stan_file = "fixed_effect_model.stan" 
-          tracked_pars = c("mu_t","gamma") 
+          self$tracked_pars = c("mu_t","gamma") 
         }else if(!random_effects && estimate_mu){
           stan_file = "fixed_effect_model_fitted_mu.stan"
-          tracked_pars = c("mu_t","gamma","e_mu")
+          self$tracked_pars = c("mu_t","gamma","e_mu")
         }else if(random_effects && estimate_mu){
           stan_file = "random_effect_model_fitted_mu.stan"
-          tracked_pars = c("lambda_mu_t","sigma_mu_t","lambda_gamma","sigma_gamma")
+          self$tracked_pars = c("lambda_mu_t","sigma_mu_t","lambda_gamma","sigma_gamma","e_mu","mu_t","gamma")
         }else{ # random effect with fixed mu
           stan_file = "random_effect_model.stan"
-          tracked_pars = c("mu_t","gamma","lambda_mu_t","sigma_mu_t","lambda_gamma","sigma_gamma")
+          self$tracked_pars = c("mu_t","gamma","lambda_mu_t","sigma_mu_t","lambda_gamma","sigma_gamma")
         }
         
         # fit the model
@@ -691,26 +694,26 @@ Outputs <- R6Class(
       base_path = self$analysis$base_path
       
       # summary stats
-      print(summary(fit)$summary)
+      print(summary(fit, pars= self$analysis$tracked_pars)$summary)
       
       # plots of posterior density
       filename = paste(base_path,'posterior_density',sep='')
       open_figure(filename, 'png')
-        p=plot(fit, plotfun = "dens")
+        p=plot(fit, plotfun = "dens",pars= self$analysis$tracked_pars)
         print(p)
       dev.off()
       
       # plots of trace with warmup
       filename = paste(base_path,'trace_with_warmup',sep='')
       open_figure(filename, 'png')
-        p =plot(fit, plotfun = "trace", inc_warmup = TRUE)
+        p =plot(fit, plotfun = "trace", inc_warmup = TRUE,pars= self$analysis$tracked_pars)
         print(p)
       dev.off()
       
       # plots of trace without warmup
       filename = paste(base_path,'trace_without_warmup',sep='')
       open_figure(filename, 'png')
-        p=plot(fit, plotfun = "trace", inc_warmup = FALSE)
+        p=plot(fit, plotfun = "trace", inc_warmup = FALSE,pars= self$analysis$tracked_pars)
         print(p)
       dev.off()
       
