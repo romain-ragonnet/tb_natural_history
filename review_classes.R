@@ -565,7 +565,7 @@ Analysis <- R6Class(
         
         # fit the model
         print("Start Stan fit")
-        self$stan_fit <- stan(file = stan_file,pars = tracked_pars,
+        self$stan_fit <- stan(file = stan_file,pars = self$tracked_pars,
                      data = standat, chains=n_chains,
                      iter = n_iterations, warmup = n_burned, thin = 1, 
                      init = "random")
