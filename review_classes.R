@@ -330,9 +330,13 @@ Inputs <- R6Class(
       return(sizes)
     },
     
-    generate_cohort_profile = function(cohort, fitted_params,likelihoods){
+    generate_cohort_profile = function(cohort, fitted_params){
       
-      filename = paste('outputs/cohort_profile_',cohort$id,sep='')
+      if (!file.exists('outputs/cohort_profiles')){
+        dir.create('outputs/cohort_profiles')
+      }
+      
+      filename = paste('outputs/cohort_profiles/cohort_',cohort$id,sep='')
       open_figure(filename, 'png', w=8.27, h=11.69)
       str_years_diagnosis = paste(cohort$year_range[1],'-',cohort$year_range[2], sep='')
       
@@ -713,6 +717,24 @@ Outputs <- R6Class(
       # save workspace
       filename = paste(base_path,'workspace.RData',sep='')
       save.image(filename)
+    },
+    
+    plot_mortality_profile = function(params, on_existing_plot=TRUE,lwd=2,col='black'){
+      attach(params)
+      
+      t = seq(0,50,by=0.0001)
+      y = 1 - (gamma / (gamma + mu_t)) * exp(-mu * t) -
+          (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * t)
+     
+      if (on_existing_plot){
+        lines(t,100*y,lwd=lwd,col=col)
+      }else{
+        plot(t,100*y,lwd=lwd,col=col,type='l',xlab="time (years)", ylab="death %", xlim=c(0,30),
+             ylim=c(0,100))
+      }
+      print(1 - (gamma / (gamma + mu_t)) * exp(-mu * 10) -
+              (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * 10)) 
+      detach(params)
     }
   )
 )

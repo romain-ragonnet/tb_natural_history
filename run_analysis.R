@@ -2,15 +2,16 @@ setwd('C:/Users/rrag0004/Models/tb_natural_history/')
 source('review_classes.R')
 
 # sampling options
+analysis_name = 'gaussian_priors'
 model = 1
-smear_status = c('positive')
+smear_status = c('negative')
 n_chains = 1
 n_iterations = 20000
 n_burned = 10000
 random_effects = TRUE
 estimate_mu = FALSE
 
-analysis = Analysis$new(smear_status, random_effects, estimate_mu)
+analysis = Analysis$new(smear_status, random_effects, estimate_mu, analysis_name)
 
 analysis$run_mcmc_stan(model=model, n_chains=n_chains, n_iterations=n_iterations, n_burned=n_burned)
 
