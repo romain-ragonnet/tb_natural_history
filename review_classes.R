@@ -677,7 +677,17 @@ Outputs <- R6Class(
         abline(h=abline_h)
         
         text(x=xmax[[par_base]]/2,y=h+1,labels=par_names[[par_base]], cex=5,adj=0.5)
+        
       }
+      # calculate disease duration
+      mu = 1/70
+      mu_t = outputs$lambda_mu_t
+      gamma = outputs$lambda_gamma
+      durations = 1/(mu+mu_t+gamma)
+      qt = quantile(durations,c(0.025,0.5,0.975),names = FALSE)
+      str = paste("Estimates for disease duration: ", round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
+      print(str)
+      
       dev.off()
       
     },
