@@ -259,7 +259,7 @@ Inputs <- R6Class(
     plot_multi_cohort = function(){
       xmax = 0
       cohorts_to_plot = c()
-      colours_by_smear = list('positive'='black', 'negative'='gray50')
+      colours_by_smear = list('positive'=my_blue, 'negative'=my_orange)
       windowsFonts(A = windowsFont("Times New Roman"))
       
       # populate cohort_to_plot and determine xmax
@@ -751,7 +751,85 @@ Outputs <- R6Class(
               (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * 10)) 
       detach(params)
     }
+
   )
 )
 
 source('load_data.R')
+
+
+plot_disease_duration <- function(sp_fit,sn_fit){
+  setwd('C:/Users/rrag0004/Models/tb_natural_history/')
+  windowsFonts(A = windowsFont("Times New Roman"))
+  
+  open_figure('disease_durations','png',w=12,h=9)
+  outputs = list('positive'=sp_fit,'negative'=sn_fit)
+  colours = list('positive'=my_blue, 'negative'=my_orange)
+  
+  
+  plot(0,0,type='n',xlim=c(0,0.02),xlab='natural mortality rate (/year)',
+       ylim=c(0,7), ylab='disease duration (years)',cex.lab=1.3)
+  
+  for (smear_status in c('positive','negative')){
+    mu_t = mean(outputs[[smear_status]]$lambda_mu_t)
+    gamma = mean(outputs[[smear_status]]$lambda_gamma)
+    
+    y=c()
+    mu_s = seq(0,0.02, by=0.001)
+    for(mu in mu_s){
+      duration = 1/(mu_t+gamma+mu)
+      y = c(y,duration)
+    }
+    lines(mu_s, y, lwd=4, col=colours[[smear_status]])
+  }
+  txt1 = 'smear-positive TB'
+  txt2 = 'smear-negative TB'
+  
+  legend(x = 0.15, y=5,legend = c(txt1, txt2),lwd=c(3,3),cex=1.3,col = c(colours$positive,colours$negative),bty = 'n')
+  
+  dev.off()
+}
+
+
+plot_cafe_fatality <- function(sp_fit,sn_fit){
+  setwd('C:/Users/rrag0004/Models/tb_natural_history/')
+  windowsFonts(A = windowsFont("Times New Roman"))
+  
+  open_figure('case_fatality','png',w=12,h=9,res=300)
+  outputs = list('positive'=sp_fit,'negative'=sn_fit)
+  colours = list('positive'=my_blue, 'negative'=my_orange)
+  shades = list('positive'=my_blue_light, 'negative'=my_orange_light)
+  
+  
+  plot(0,0,type='n',xlim=c(0,0.05),xlab='natural mortality rate (/year)',
+       ylim=c(0,100), ylab='10-year case fatality (%)',cex.lab=1.3)
+  
+  for (smear_status in c('positive','negative')){
+    mu_t = outputs[[smear_status]]$lambda_mu_t
+    gamma =outputs[[smear_status]]$lambda_gamma
+    
+    for (year in c(10)){
+      y=c()
+      y_low=c()
+      y_high=c()
+      mu_s = seq(0,0.05, by=0.001)
+      for(mu in mu_s){
+        cf = 1 - (gamma / (gamma + mu_t)) * exp(-mu * year) -
+          (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * year)
+        y = c(y,100*mean(cf))
+        y_low = c(y_low,100*quantile(cf,probs = 0.025))
+        y_high = c(y_high,100*quantile(cf,probs = 0.975))
+      }
+      polygon(x=c(mu_s,rev(mu_s)),y=c(y_low,rev(y_high)), col=shades[[smear_status]],border=NA)
+      lines(mu_s, y, lwd=6, col=colours[[smear_status]])
+    }
+   
+  }
+  txt1 = 'smear-positive TB'
+  txt2 = 'smear-negative TB'
+  
+  legend(x = 0.03, y=20,legend = c(txt1, txt2),lwd=c(4,4),cex=1.3,col = c(colours$positive,colours$negative),bty = 'n')
+  
+  dev.off()
+}
+
