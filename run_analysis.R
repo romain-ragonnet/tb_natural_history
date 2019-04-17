@@ -6,16 +6,15 @@ analysis_name = 'gaussian_priors'
 model = 1
 smear_status = c('negative')
 n_chains = 1
-n_iterations = 20000
-n_burned = 10000
+n_iterations = 11000
+n_burned = 1000
 random_effects = TRUE
-estimate_mu = FALSE
+estimate_mu = TRUE
 
 analysis = Analysis$new(smear_status, random_effects, estimate_mu, analysis_name)
-
 analysis$run_mcmc_stan(model=model, n_chains=n_chains, n_iterations=n_iterations, n_burned=n_burned)
 
 outputs = Outputs$new(analysis)
-outputs$produce_stan_outputs()
+# outputs$produce_stan_outputs()
 outputs$produce_mcmc_random_effect_graphs_from_stan()
 

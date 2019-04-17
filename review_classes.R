@@ -195,11 +195,24 @@ Cohort <- R6Class(
       }  
     },
     
-    plot_cohort_data = function(){
+    plot_cohort_data = function(fitted_params=NA,n_spaghettis=100){
       plot(self$times, self$perc_death, main='',
            xlab='time (years)', ylab='cumulative death (%)', xlim=c(0,30), ylim=c(0,100),
            pch=18, cex=1.5
            )
+      if (!is.na(fitted_params)){
+        t = seq(0,30,by=0.1)
+        n_plotted = min(n_spaghettis, length(fitted_params$mu_t))
+        for (i in 1:n_plotted){
+          gamma=fitted_params$gamma[i]
+          mu_t=fitted_params$mu_t[i]
+          mu = fitted_params$mu[i]
+          y=1 - (gamma / (gamma + mu_t)) * exp(-mu * t) -
+            (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * t)
+          lines(t,100*y,col=my_blue, lwd=1)
+        }
+        points(self$times, self$perc_death,pch=18, cex=2.5, col=my_red)
+      }
     }
   )
 )
@@ -331,12 +344,11 @@ Inputs <- R6Class(
     },
     
     generate_cohort_profile = function(cohort, fitted_params){
-      
-      if (!file.exists('outputs/cohort_profiles')){
-        dir.create('outputs/cohort_profiles')
+      smear_str = 'sp_'
+      if (cohort$smear_status == 'negative'){
+        smear_str = 'sn_'
       }
-      
-      filename = paste('outputs/cohort_profiles/cohort_',cohort$id,sep='')
+      filename = paste('outputs/cohort_profiles/',smear_str,'cohort_',cohort$id,sep='')
       open_figure(filename, 'png', w=8.27, h=11.69)
       str_years_diagnosis = paste(cohort$year_range[1],'-',cohort$year_range[2], sep='')
       
@@ -381,16 +393,19 @@ Inputs <- R6Class(
       
       # data
       par(mar=c(3.5,6,1,6))
-      cohort$plot_cohort_data()
+      cohort$plot_cohort_data(fitted_params)
       
+      
+      xmax_mu_t = list('positive'=1, 'negative'=0.1)
+      xmax_gamma = list('positive'=1, 'negative'=0.5)
+      h_color = my_purple
+      
+      # fitted mu_t
       par(mar=c(4,4,4,1))
-      param = paste('mu_t#',cohort$id,sep='')
-      hist(c(0))
-      # hist(fitted_params[[param]],breaks = 50,main='',xlab='mu_t')
+      hist(fitted_params$mu_t,breaks = 50,main='',xlab='mu_t',xlim=c(0,xmax_mu_t[[cohort$smear_status]]),col = h_color,border=h_color)
       
-      param = paste('gamma#',cohort$id,sep='')
-      hist(c(0))
-      # hist(fitted_params[[param]],breaks = 50,main='',xlab='gamma')
+      # fitted gamma
+      hist(fitted_params$gamma,breaks = 50,main='',xlab='gamma',xlim=c(0,xmax_gamma[[cohort$smear_status]]),col = h_color,border=h_color)
       
       dev.off()
       
@@ -474,7 +489,7 @@ Analysis <- R6Class(
         if (self$estimate_mu){mu_string = paste(effect_string,'/estimated_mu',sep='')}
         smear_string = paste(mu_string,'/',self$smear_status[1], sep='')
         with_analysis_name = paste(smear_string,'/',self$analysis_name, sep='')
-        paths = c('outputs', 'outputs/stan',effect_string, mu_string, smear_string, with_analysis_name)
+        paths = c('outputs', 'outputs/stan',effect_string, mu_string, smear_string, with_analysis_name, 'outputs/cohort_profiles')
         self$base_path = paste(with_analysis_name,'/',sep='') 
         for (path in paths){
           if (!file.exists(path)){
@@ -689,6 +704,27 @@ Outputs <- R6Class(
       print(str)
       
       dev.off()
+      
+      # generate cohort profiles with fitted parameters
+      h=1
+      for (i in self$analysis$cohort_ids){
+        h = h+1
+        mu_t_str = paste("mu_t[",h-1,"]",sep='')
+        gamma_str = paste("gamma[",h-1,"]",sep='')
+        mu_str = paste("e_mu[",h-1,"]",sep='')
+        fitted_params = list('mu_t'=outputs[[mu_t_str]],'gamma'=outputs[[gamma_str]], 'mu'=outputs[[mu_str]])
+        
+        coh = NA
+        for (cohort in self$analysis$inputs$cohorts){
+          if (cohort$id == i){
+            coh=cohort
+            break
+          }
+        }
+        if (!is.na(coh)){
+          self$analysis$inputs$generate_cohort_profile(coh,fitted_params)
+        }
+      }
       
     },
     

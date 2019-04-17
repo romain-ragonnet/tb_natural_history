@@ -22,14 +22,14 @@ all_colors = c(my_blue, my_orange, my_green, my_red, my_grey, my_purple,
                my_blue_light, my_orange_light, my_green_light, my_red_light, my_grey_light, my_purple_light,
                my_brown_light, my_gold_light)
 
-open_figure <- function(filename, format, w=10, h=10){
+open_figure <- function(filename, format, w=10, h=10, res=300){
   filepath = paste(filename, format, sep='.')
   if (format == 'pdf'){
     pdf(filepath,width=w, height=h)
   }else if (format == 'png'){
-    png(filepath, width=w, height=h, units='in', res=300)
+    png(filepath, width=w, height=h, units='in', res=res)
   }else if (format == 'jpg' || format == 'jpeg'){
-    jpeg(filepath, width=w, height=h, units='in', res=300)
+    jpeg(filepath, width=w, height=h, units='in', res=res)
   }else{
     print("The file format is not recognised")
   }
