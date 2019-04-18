@@ -23,6 +23,7 @@ Cohort <- R6Class(
     description = '',
     formatted_data = NULL,
     age_distribution = NULL,
+    sex = 'not_given',
     mu=NULL,
     mu_sd=NULL,
   
@@ -125,13 +126,13 @@ Cohort <- R6Class(
       if (grepl('men',self$cohort_name)){
         if (grepl('women',self$cohort_name)){
           str = paste(self$description, ' Female patients only.', sep='')
+          self$sex = 'women'
         }else{
           str = paste(self$description, ' Male patients only.', sep='')
+          self$sex = 'men'
         }
         self$description = str
       }
-      
-      
     },
     
     format_data = function(){
@@ -471,16 +472,18 @@ Analysis <- R6Class(
       random_effects = FALSE,
       estimate_mu = FALSE,
       analysis_name = '',
+      restrict_to = NA,
       base_path = '',
       tracked_pars=c(),
       
-      initialize = function(smear_status,random_effects,estimate_mu, analysis_name){
+      initialize = function(smear_status,random_effects,estimate_mu, analysis_name, restrict_to=NA){
         self$inputs = inputs
         self$smear_status = smear_status
         self$random_effects = random_effects
         self$estimate_mu = estimate_mu
         self$analysis_name = analysis_name
         self$produce_main_dataframe()
+        self$restrict_to = restrict_to
         
         # create directories
         effect_string = 'outputs/stan/fixed_effect'
@@ -503,8 +506,21 @@ Analysis <- R6Class(
         
         for (c in self$inputs$cohorts){
           if (c$smear_status %in% self$smear_status){
-            self$all_data = rbind(self$all_data, c$formatted_data)
-            self$cohort_ids = c(self$cohort_ids, c$id)
+            if (!is.na(restrict_to)){
+              if (restrict_to == 'men'){
+                if(c$sex == 'men'){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }              
+              }
+              if (restrict_to == 'women'){
+                if(c$sex == 'women'){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }              
+              }
+            }
+
           }
         }
         
@@ -600,7 +616,7 @@ Outputs <- R6Class(
       self$analysis = analysis 
     },
 
-    produce_mcmc_random_effect_graphs_from_stan = function(fixed_estimates=NA){
+    produce_mcmc_random_effect_graphs_from_stan = function(fixed_estimates=NA, generate_cohort_profiles=FALSE){
       # fixed_estimates is a list of type list(mu_T=c(lower,median,upper), ...)
       fit = self$analysis$stan_fit
       outputs = as.data.frame(fit)
@@ -706,25 +722,28 @@ Outputs <- R6Class(
       dev.off()
       
       # generate cohort profiles with fitted parameters
-      h=1
-      for (i in self$analysis$cohort_ids){
-        h = h+1
-        mu_t_str = paste("mu_t[",h-1,"]",sep='')
-        gamma_str = paste("gamma[",h-1,"]",sep='')
-        mu_str = paste("e_mu[",h-1,"]",sep='')
-        fitted_params = list('mu_t'=outputs[[mu_t_str]],'gamma'=outputs[[gamma_str]], 'mu'=outputs[[mu_str]])
-        
-        coh = NA
-        for (cohort in self$analysis$inputs$cohorts){
-          if (cohort$id == i){
-            coh=cohort
-            break
+      if (generate_cohort_profiles){
+        h=1
+        for (i in self$analysis$cohort_ids){
+          h = h+1
+          mu_t_str = paste("mu_t[",h-1,"]",sep='')
+          gamma_str = paste("gamma[",h-1,"]",sep='')
+          mu_str = paste("e_mu[",h-1,"]",sep='')
+          fitted_params = list('mu_t'=outputs[[mu_t_str]],'gamma'=outputs[[gamma_str]], 'mu'=outputs[[mu_str]])
+          
+          coh = NA
+          for (cohort in self$analysis$inputs$cohorts){
+            if (cohort$id == i){
+              coh=cohort
+              break
+            }
+          }
+          if (!is.na(coh)){
+            self$analysis$inputs$generate_cohort_profile(coh,fitted_params)
           }
         }
-        if (!is.na(coh)){
-          self$analysis$inputs$generate_cohort_profile(coh,fitted_params)
-        }
       }
+      
       
     },
     
