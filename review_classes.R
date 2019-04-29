@@ -167,8 +167,8 @@ Cohort <- R6Class(
         self$mu_sd = 0.001
         recruitment_year = floor(mean(self$year_range))
         # find appropriate mortality table
-        if (grepl('men',self$cohort_name)){
-          if (grepl('women',self$cohort_name)){
+        if (grepl('men',self$cohort_name,ignore.case = TRUE)){
+          if (grepl('women',self$cohort_name, ignore.case = TRUE)){
             mortality_table = mortality_data$female
           }else{
             mortality_table = mortality_data$male
@@ -483,10 +483,11 @@ Analysis <- R6Class(
       estimate_mu = FALSE,
       analysis_name = '',
       restrict_to = NA,
+      priors = 'normal',
       base_path = '',
       tracked_pars=c(),
       
-      initialize = function(smear_status,random_effects,estimate_mu, analysis_name, restrict_to=NA){
+      initialize = function(smear_status,random_effects,estimate_mu, analysis_name, restrict_to=NA, priors='normal'){
         self$inputs = inputs
         self$smear_status = smear_status
         self$random_effects = random_effects
@@ -494,6 +495,7 @@ Analysis <- R6Class(
         self$analysis_name = analysis_name
         self$produce_main_dataframe()
         self$restrict_to = restrict_to
+        self$priors = priors
         
         # create directories
         effect_string = 'outputs/stan/fixed_effect'
@@ -521,10 +523,17 @@ Analysis <- R6Class(
                 if(c$sex == 'men'){
                   self$all_data = rbind(self$all_data, c$formatted_data)
                   self$cohort_ids = c(self$cohort_ids, c$id)
+                  print(c$id)
                 }              
               }
               if (restrict_to == 'women'){
                 if(c$sex == 'women'){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }              
+              }
+              if (restrict_to == 'no_gender'){
+                if(c$sex == 'not_given'){
                   self$all_data = rbind(self$all_data, c$formatted_data)
                   self$cohort_ids = c(self$cohort_ids, c$id)
                 }              
@@ -581,7 +590,7 @@ Analysis <- R6Class(
         }
         rstan_options(auto_write = TRUE)
 
-        if (estimate_mu){
+        if (self$estimate_mu){
           # get mu and sd by cohort
           mu_by_cohort = c()
           mu_sd_by_cohort = c()
@@ -618,14 +627,17 @@ Analysis <- R6Class(
           )
         }
         
-        if (!random_effects && !estimate_mu){
+        if (!self$random_effects && !self$estimate_mu){
           stan_file = "fixed_effect_model.stan" 
           self$tracked_pars = c("mu_t","gamma") 
-        }else if(!random_effects && estimate_mu){
+        }else if(!self$random_effects && self$estimate_mu){
           stan_file = "fixed_effect_model_fitted_mu.stan"
           self$tracked_pars = c("mu_t","gamma","e_mu")
-        }else if(random_effects && estimate_mu){
+        }else if(self$random_effects && self$estimate_mu){
           stan_file = "random_effect_model_fitted_mu.stan"
+          if (self$priors == 'gamma'){
+            stan_file = "random_effect_model_fitted_mu_gamma_priors.stan"
+          }
           self$tracked_pars = c("lambda_mu_t","sigma_mu_t","lambda_gamma","sigma_gamma","e_mu","mu_t","gamma")
         }else{ # random effect with fixed mu
           stan_file = "random_effect_model.stan"
@@ -734,6 +746,9 @@ Outputs <- R6Class(
         
         #ln_means = exp(outputs[[hyper_par_mean]] + 0.5*(outputs[[hyper_par_sd]])**2)  # lognormal priors
         ln_means = outputs[[hyper_par_mean]]
+        if (self$priors == 'gamma'){  # lambda is actually the shape param  and sigma the rate
+          ln_means = outputs[[hyper_par_mean]]/outputs[[hyper_par_sd]]
+        }  
         qt = quantile(ln_means,c(0.025,0.5,0.975),names = FALSE)
         lines(x = c(qt[1], qt[3]), y=c(1,1), col='red', lwd=lwd)
         points(x=qt[2], y=1, col='red', cex=cex, pch=18)
@@ -754,6 +769,10 @@ Outputs <- R6Class(
       mu = 1/70
       mu_t = outputs$lambda_mu_t
       gamma = outputs$lambda_gamma
+      if (self$priors == 'gamma'){  # lambda is actually the shape param  and sigma the rate
+        mu_t = outputs$lambda_mu_t / outputs$sigma_mu_t
+        gamma = outputs$lambda_gamma / outputs$sigma_gamma
+      }
       durations = 1/(mu+mu_t+gamma)
       qt = quantile(durations,c(0.025,0.5,0.975),names = FALSE)
       str = paste("Estimates for disease duration: ", round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
