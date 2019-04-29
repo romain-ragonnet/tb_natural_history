@@ -746,7 +746,7 @@ Outputs <- R6Class(
         
         #ln_means = exp(outputs[[hyper_par_mean]] + 0.5*(outputs[[hyper_par_sd]])**2)  # lognormal priors
         ln_means = outputs[[hyper_par_mean]]
-        if (self$priors == 'gamma'){  # lambda is actually the shape param  and sigma the rate
+        if (self$analysis$priors == 'gamma'){  # lambda is actually the shape param  and sigma the rate
           ln_means = outputs[[hyper_par_mean]]/outputs[[hyper_par_sd]]
         }  
         qt = quantile(ln_means,c(0.025,0.5,0.975),names = FALSE)
@@ -769,7 +769,7 @@ Outputs <- R6Class(
       mu = 1/70
       mu_t = outputs$lambda_mu_t
       gamma = outputs$lambda_gamma
-      if (self$priors == 'gamma'){  # lambda is actually the shape param  and sigma the rate
+      if (self$analysis$priors == 'gamma'){  # lambda is actually the shape param  and sigma the rate
         mu_t = outputs$lambda_mu_t / outputs$sigma_mu_t
         gamma = outputs$lambda_gamma / outputs$sigma_gamma
       }
