@@ -123,8 +123,8 @@ Cohort <- R6Class(
       self$description = descriptions[[self$author]]
       
       # add gender details to descriptions
-      if (grepl('men',self$cohort_name)){
-        if (grepl('women',self$cohort_name)){
+      if (grepl('men',self$cohort_name,ignore.case = TRUE)){
+        if (grepl('women',self$cohort_name,ignore.case = TRUE)){
           str = paste(self$description, ' Female patients only.', sep='')
           self$sex = 'women'
         }else{
@@ -456,7 +456,17 @@ Inputs <- R6Class(
       }
       
       dev.off()
+    },
+    
+    get_average_diagnosis_year = function(){
+      years = c()
+      for (coh in self$cohorts){
+        mean_y = mean(coh$year_range)
+        years= c(years, mean_y)
+      }
+      return(years)
     }
+    
   )
 )
     
@@ -519,6 +529,34 @@ Analysis <- R6Class(
                   self$cohort_ids = c(self$cohort_ids, c$id)
                 }              
               }
+              if (restrict_to == 'before_1924'){
+                if(mean(c$year_range) < 1924){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }
+              }  
+              if (restrict_to == 'after_1924'){
+                if(mean(c$year_range) > 1924){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }
+              }
+              if (restrict_to == 'sanatorium'){
+                if(grepl('anatori',c$description)){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }
+              }
+              if (restrict_to == 'non-sanatorium'){
+                if(!grepl('anatori',c$description)){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }
+              }
+                
+            }else{
+              self$all_data = rbind(self$all_data, c$formatted_data)
+              self$cohort_ids = c(self$cohort_ids, c$id)
             }
 
           }
@@ -687,6 +725,8 @@ Outputs <- R6Class(
           qt = quantile(x,c(0.025,0.5,0.975),names = FALSE)
           lines(x = c(qt[1], qt[3]), y=c(h,h), lwd=lwd)
           points(x=qt[2], y=h, cex=cex, pch=18)
+          str = paste(par_base, ' for cohort ', i, ': ', round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
+          print(str)
         }
         # plot mean estimates based on random-effect model
         hyper_par_mean = paste('lambda_',par_base,sep='')
