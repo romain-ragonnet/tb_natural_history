@@ -65,8 +65,8 @@ parameters {
   vector<lower=0, upper=0.03>[K] e_mu; // estimated cohort-specific natural mortality
   
   // hyperparameters
-  real<lower=0> lambda_mu_t;          // location for log normal dist for mu_t
-  real<lower=0> lambda_gamma;         // location for log normal dist for gamma
+  real<lower=0, upper=10> lambda_mu_t;          // location for log normal dist for mu_t
+  real<lower=0, upper=10> lambda_gamma;         // location for log normal dist for gamma
   real<lower=0> sigma_mu_t;  // scale for log normal dist for mu_t
   real<lower=0> sigma_gamma; // scale for log normal dist for gamma
 }

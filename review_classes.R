@@ -1,5 +1,7 @@
 library(R6)
 library(truncnorm)
+
+setwd('C:/Users/rrag0004/Models/tb_natural_history/')
 source('graph_tools.R')
 
 get_param_base <- function(param){
@@ -324,7 +326,7 @@ Inputs <- R6Class(
       
       cpt=0
       sizes = c()
-      for (cohort in self$cohorts){
+      for (cohort in rev(self$cohorts)){
         
         sizes = c(sizes, cohort$cohort_size)
         
@@ -334,12 +336,16 @@ Inputs <- R6Class(
           col='gray'
         }
         lines(cohort$year_range, c(cpt*line_height, cpt*line_height), lwd=4, col=col)
-        name = paste(cohort$author, cohort$cohort_name, sep=' ')
+        #name = paste(cohort$author, cohort$cohort_name, sep=' ')
+        name = cohort$id 
         mtext(text = name,side = 2,line = 0,at = cpt*line_height, las=1)
         
         text(x = 1900, y=cpt*line_height,labels = cohort$cohort_size, pos=4)
       }
-      text(x=1900, y=cpt*line_height+2, labels='N', pos=4)
+      text(x=1900, y=cpt*line_height+2, labels='Cohort size', pos=4)
+      
+      mtext(at=cpt*line_height+2, text='Cohort #', las=1, line=0, side=2)
+      
       dev.off()
       return(sizes)
     },
@@ -423,7 +429,7 @@ Inputs <- R6Class(
           mai=c(bot,lef,top,rig))
       
       count = 0
-      for (coh in self$analysis$cohorts){
+      for (coh in self$cohorts){
         if (!is.null(coh$age_distribution)){
           count = count + 1
           x_lab='age (years)'
@@ -573,7 +579,7 @@ Analysis <- R6Class(
         
       },
 
-      run_mcmc_stan =function(model,n_chains, n_iterations, n_burned){
+      run_mcmc_stan =function(model,n_chains, n_iterations, n_burned, thinning_period){
         print("Loading rstan...")
         library(rstan)
         print("... done")
@@ -648,7 +654,7 @@ Analysis <- R6Class(
         print("Start Stan fit")
         self$stan_fit <- stan(file = stan_file,pars = self$tracked_pars,
                      data = standat, chains=n_chains,
-                     iter = n_iterations, warmup = n_burned, thin = 1, 
+                     iter = n_iterations, warmup = n_burned, thin = thinning_period, 
                      init = "random")
 
       }
@@ -686,7 +692,7 @@ Outputs <- R6Class(
       height_plot = length(self$analysis$cohort_ids) + 2 
       
       filename= paste(base_path, 'params_by_cohort',sep='')
-      open_figure(filename, 'pdf', w=25, h=height_plot + 2)
+      open_figure(filename, 'png', w=25, h=height_plot + 2)
       
       layout(matrix(c(1,1,1,2,3,4), 2, 3, byrow = TRUE), 
              widths=c(1,2,2), heights=c(1,height_plot))
@@ -803,7 +809,9 @@ Outputs <- R6Class(
         }
       }
       
-      
+      # save workspace
+      filename = paste(self$analysis$base_path,'workspace.RData',sep='')
+      save.image(filename)
     },
     
     produce_stan_outputs = function(){
@@ -844,8 +852,8 @@ Outputs <- R6Class(
       dev.off()
       
       # save workspace
-      filename = paste(base_path,'workspace.RData',sep='')
-      save.image(filename)
+      # filename = paste(base_path,'workspace.RData',sep='')
+      # save.image(filename)
     },
     
     plot_mortality_profile = function(params, on_existing_plot=TRUE,lwd=2,col='black'){
@@ -919,21 +927,41 @@ plot_cafe_fatality <- function(sp_fit,sn_fit){
        ylim=c(0,100), ylab='10-year case fatality (%)',cex.lab=1.3)
   
   for (smear_status in c('positive','negative')){
+    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    print(smear_status)
+    print('')
     mu_t = outputs[[smear_status]]$lambda_mu_t
     gamma =outputs[[smear_status]]$lambda_gamma
     
-    for (year in c(10)){
+    for (year in c(2,5,10)){
+      str = paste("CFR after ", year, " years:", sep='')
+      print(str)
       y=c()
       y_low=c()
       y_high=c()
-      mu_s = seq(0,0.05, by=0.001)
+      mu_s = c(0.005, 0.01, 0.05, 0.1)
       for(mu in mu_s){
         cf = 1 - (gamma / (gamma + mu_t)) * exp(-mu * year) -
           (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * year)
-        y = c(y,100*mean(cf))
-        y_low = c(y_low,100*quantile(cf,probs = 0.025))
-        y_high = c(y_high,100*quantile(cf,probs = 0.975))
+        this_y = round(100*median(cf))
+        this_y_low = round(100*quantile(cf,probs = 0.025))
+        this_y_high = round(100*quantile(cf,probs = 0.975))
+        
+        y = c(y,this_y)
+        y_low = c(y_low,this_y_low )
+        y_high = c(y_high,this_y_high)
+        
+        str = paste("mu=", mu, ": CFR=", this_y, "(",this_y_low,'-',this_y_high,')', sep='')
+        print(str)
+        
+        durations = 1/(mu_t+gamma+mu)
+        d = round(median(durations),2)
+        d_low = round(quantile(durations,probs = 0.025),2)
+        d_high = round(quantile(durations,probs = 0.975),2)
+        str = paste("mu=", mu, ": duration=", d, "(",d_low,'-',d_high,')', sep='')
+        print(str)
       }
+      print("****************")
       polygon(x=c(mu_s,rev(mu_s)),y=c(y_low,rev(y_high)), col=shades[[smear_status]],border=NA)
       lines(mu_s, y, lwd=6, col=colours[[smear_status]])
     }
