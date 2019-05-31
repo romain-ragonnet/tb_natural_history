@@ -3,9 +3,9 @@ setwd('C:/Users/rrag0004/Models/tb_natural_history/')
 source('review_classes.R')
 
 # sampling options
-analysis_name = 'test_analysis'
+analysis_name = 'main_analysis'
 model = 1
-smear_status = c('positive')
+smear_status = c('negative')
 n_chains = 1
 n_iterations = 60000
 n_burned = 10000
@@ -22,3 +22,4 @@ outputs = Outputs$new(analysis)
 # outputs$produce_stan_outputs()
 outputs$produce_mcmc_random_effect_graphs_from_stan(generate_cohort_profiles=FALSE)
 
+outputs$write_disease_duration_and_cfr_to_file()

@@ -672,20 +672,10 @@ Outputs <- R6Class(
       self$analysis = analysis 
     },
 
-    produce_mcmc_random_effect_graphs_from_stan = function(fixed_estimates=NA, generate_cohort_profiles=FALSE){
+    produce_mcmc_random_effect_graphs_from_stan = function(generate_cohort_profiles=FALSE){
       # fixed_estimates is a list of type list(mu_T=c(lower,median,upper), ...)
       fit = self$analysis$stan_fit
       outputs = as.data.frame(fit)
-      
-      if(is.na(fixed_estimates)){
-        if (self$analysis$smear_status[1] == 'positive'){
-          fixed_estimates=list('mu_t'=c(0.301, 0.307, 0.313), 
-                               'gamma'=c(0.133, 0.139, 0.145))
-        }else{
-          fixed_estimates=list('mu_t'=c(0.018, 0.024, 0.031), 
-                               'gamma'=c(0.090, 0.140, 0.199))
-        }
-      }
       
       base_path = self$analysis$base_path 
       # figure height
@@ -699,26 +689,29 @@ Outputs <- R6Class(
       
       par(mar=c(0.2, 4.1, 0.2, 2.1))
 
+      filename_txt = paste(base_path,'param_estimates.txt',sep='')
+      to_write = c()
+      fileConn<-file(filename_txt)
+      
       # Plot graph titlte
       plot(0,0,type='n',bty='n',axes=FALSE,xlab='',ylab='')
       title = paste("Smear-",self$analysis$smear_status[1]," TB",sep='')
       text(0,0,title, cex=6)
       
-      abline_h = 1.5
+      abline_h = .5
       
       # Write cohort indices
       par(mar=c(7.1, 4.1, 0.2, 2.1))
       cex=5
       x_write = 5
       plot(0,0,type='n',bty='n',axes=FALSE,xlim=c(0,10),ylim=c(0,height_plot), xlab='',ylab='')
-      h = 1
-      for (i in self$analysis$cohort_ids){
+      h = 0
+      for (i in rev(self$analysis$cohort_ids)){
         h = h+1
         text(x = x_write,y=h,labels = i, cex=cex*0.75,adj=0.5)
       }
       text(x=x_write,y=h+1,labels='Cohort #', cex=cex,adj=0.5)
-      text(x=x_write,y=1,labels='Average*', cex=cex,adj=0.5)
-      text(x=x_write,y=0,labels='Fixed-effect', cex=cex,adj=0.5)
+      text(x=x_write,y=-0.5,labels='overall', cex=cex,adj=0.5)
       abline(h = abline_h)
       
       # Plot cohort-specific results for each parameter
@@ -735,16 +728,42 @@ Outputs <- R6Class(
         plot(0,0,type='n',main='',bty='n',axes=FALSE, cex.lab = 4,
              xlim=c(0,xmax[[par_base]]),ylim=c(0,height_plot),xlab='/year',ylab='')
         axis(side=1, lwd = 3, lwd.ticks = 3, cex.axis=4)
-        h = 1
-        for (i in self$analysis$cohort_ids){
+        h = 0
+        for (i in rev(self$analysis$cohort_ids)){
           h = h+1
-          par = paste(par_base,"[",h-1,"]",sep='')
+          index = length(self$analysis$cohort_ids) - (h-1)
+          par = paste(par_base,"[",index,"]",sep='')
           x = outputs[[par]]
           qt = quantile(x,c(0.025,0.5,0.975),names = FALSE)
-          lines(x = c(qt[1], qt[3]), y=c(h,h), lwd=lwd)
-          points(x=qt[2], y=h, cex=cex, pch=18)
+          
+          coh = NA
+          for (coh in self$analysis$inputs$cohorts){
+            if (coh$id == i){
+              break
+            }
+          }
+          if (is.na(coh)){
+            print("WARNING!!! no cohort found for given id")
+          }
+          this_color = my_red
+          if(grepl('anatori',coh$description)){
+            this_color = my_purple
+          }
+          this_size = coh$cohort_size 
+          
+          # work out cex value
+          cex_max = 10
+          coh_size_max = 2382
+          if ('negative' %in% self$analysis$smear_status){
+            coh_size_max = 280
+          }
+          alpha = cex_max * sqrt(pi/coh_size_max)
+          this_cex = alpha * sqrt(this_size/pi)
+          
+          lines(x = c(qt[1], qt[3]), y=c(h,h), lwd=lwd, col=this_color)
+          points(x=qt[2], y=h, cex=this_cex, pch=16, col=this_color)
           str = paste(par_base, ' for cohort ', i, ': ', round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
-          print(str)
+          to_write = c(to_write, str)
         }
         # plot mean estimates based on random-effect model
         hyper_par_mean = paste('lambda_',par_base,sep='')
@@ -756,33 +775,20 @@ Outputs <- R6Class(
           ln_means = outputs[[hyper_par_mean]]/outputs[[hyper_par_sd]]
         }  
         qt = quantile(ln_means,c(0.025,0.5,0.975),names = FALSE)
-        lines(x = c(qt[1], qt[3]), y=c(1,1), col='red', lwd=lwd)
-        points(x=qt[2], y=1, col='red', cex=cex, pch=18)
+        lines(x = c(qt[1], qt[3]), y=c(-0.5,-0.5),  lwd=lwd)
+        points(x=qt[2], y=-0.5, cex=5, pch=18)
         str = paste("Estimates for ",par_base,": ", round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
-        print(str)
-        
-        # plot estimates based on fixed-effect model
-        qt = fixed_estimates[[par_base]] 
-        lines(x = c(qt[1], qt[3]), y=c(0,0), col='blue', lwd=lwd)
-        points(x=qt[2], y=0, col='blue', cex=cex, pch=18)
-        
+        to_write = c(to_write, str)
+        to_write = c(to_write, "")
+      
         abline(h=abline_h)
         
         text(x=xmax[[par_base]]/2,y=h+1,labels=par_names[[par_base]], cex=5,adj=0.5)
         
       }
-      # calculate disease duration
-      mu = 1/70
-      mu_t = outputs$lambda_mu_t
-      gamma = outputs$lambda_gamma
-      if (self$analysis$priors == 'gamma'){  # lambda is actually the shape param  and sigma the rate
-        mu_t = outputs$lambda_mu_t / outputs$sigma_mu_t
-        gamma = outputs$lambda_gamma / outputs$sigma_gamma
-      }
-      durations = 1/(mu+mu_t+gamma)
-      qt = quantile(durations,c(0.025,0.5,0.975),names = FALSE)
-      str = paste("Estimates for disease duration: ", round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
-      print(str)
+      
+      writeLines(to_write, fileConn)
+      close(fileConn)
       
       dev.off()
       
