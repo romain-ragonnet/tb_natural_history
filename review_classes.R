@@ -872,8 +872,49 @@ Outputs <- R6Class(
       print(1 - (gamma / (gamma + mu_t)) * exp(-mu * 10) -
               (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * 10)) 
       detach(params)
-    }
+    },
 
+    write_disease_duration_and_cfr_to_file = function(){
+      
+      fit = self$analysis$stan_fit
+      outputs = as.data.frame(fit)
+      mu_t = outputs$lambda_mu_t
+      gamma =outputs$lambda_gamma
+      
+      base_path = self$analysis$base_path 
+      filename = paste(base_path,'tb_duration_and_cfr.txt',sep='')
+      
+      to_write = c()
+      fileConn<-file(filename)
+        years_to_loop = c(2,5,10)
+        for (year in years_to_loop){
+          str = paste("CFR after ", year, " years:", sep='')
+          to_write = c(to_write,str)
+          
+          mu_s = c(0.005, 0.01, 0.05, 0.1)
+          for(mu in mu_s){
+            cf = 1 - (gamma / (gamma + mu_t)) * exp(-mu * year) -
+              (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * year)
+            this_y = round(100*median(cf))
+            this_y_low = round(100*quantile(cf,probs = 0.025))
+            this_y_high = round(100*quantile(cf,probs = 0.975))
+            
+            str = paste("mu=", mu, ": CFR=", this_y, "(",this_y_low,'-',this_y_high,')', sep='')
+            to_write = c(to_write,str)
+            
+            if (year == years_to_loop[length(years_to_loop)]){
+              durations = 1/(mu_t+gamma+mu)
+              d = round(median(durations),2)
+              d_low = round(quantile(durations,probs = 0.025),2)
+              d_high = round(quantile(durations,probs = 0.975),2)
+              str = paste("mu=", mu, ": duration=", d, "(",d_low,'-',d_high,')', sep='')
+              to_write = c(to_write,str)
+            }
+          }
+        }
+        writeLines(to_write, fileConn)
+      close(fileConn)
+    }    
   )
 )
 
