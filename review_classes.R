@@ -720,7 +720,9 @@ Outputs <- R6Class(
       }else{
         xmax = list('gamma'=1,'mu_t'=0.15)
       }
-      par_names = list('gamma'='Self-recovery rate','mu_t'='TB mortality rate')
+      par_names = list('gamma'=expression(paste('Self-recovery rate (', gamma, ')')),
+                       'mu_t'=expression(paste('TB mortality rate (', mu[T],')'))
+                       )
       lwd = 4
       cex=4
       par(mgp=c(5, 3, 0))
@@ -905,7 +907,7 @@ Outputs <- R6Class(
             this_y_low = round(100*quantile(cf,probs = 0.025))
             this_y_high = round(100*quantile(cf,probs = 0.975))
             
-            str = paste("mu=", mu, ": CFR=", this_y, "(",this_y_low,'-',this_y_high,')', sep='')
+            str = paste("mu=", mu, ": CFR=", this_y, " (",this_y_low,'-',this_y_high,')', sep='')
             to_write = c(to_write,str)
             
             if (year == years_to_loop[length(years_to_loop)]){
@@ -913,7 +915,7 @@ Outputs <- R6Class(
               d = round(median(durations),2)
               d_low = round(quantile(durations,probs = 0.025),2)
               d_high = round(quantile(durations,probs = 0.975),2)
-              str = paste("mu=", mu, ": duration=", d, "(",d_low,'-',d_high,')', sep='')
+              str = paste("mu=", mu, ": duration=", d, " (",d_low,'-',d_high,')', sep='')
               to_write = c(to_write,str)
             }
           }
