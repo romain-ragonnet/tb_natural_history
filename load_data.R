@@ -661,12 +661,11 @@ inputs$add_cohort(author = 'Magnusson',
 
 # ___________________________________
 #   Preliminary work
-# inputs$produce_main_dataframe()
 
 generate_cohort_profiles <- function(inputs){
   outputs = Outputs$new(inputs)
   for (coh in inputs$cohorts){
-    outputs$generate_cohort_profile(coh, c(0), c(0))
+    inputs$generate_cohort_profile(coh, c(0), c(0))
   }
 }
 
