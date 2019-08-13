@@ -2,3 +2,5 @@ outputs/*
 outputs\*
 .Rhistory
 outputs/mcmc/Model1/test.txt
+*.png
+*.rds
