@@ -151,6 +151,8 @@ Cohort <- R6Class(
         formatted_data$cohort_id[i] = self$id
         formatted_data$mu[i] = self$mu
         formatted_data$mu_sd[i] = self$mu_sd
+        formatted_data$start_year[i] = self$year_range[1]
+        formatted_data$end_year[i] = self$year_range[2]
         
         
         if (formatted_data$n_at_risk[i] < formatted_data$n_new_deaths[i]){
@@ -227,9 +229,19 @@ Inputs <- R6Class(
     mortality_data = list(),
     n_age_available = 0,
     n_cohorts = 0,
+    tb_mortality_data = list('Sweden'=list('values' = 0.001*c(1.92,1.78,1.77,1.93,1.89,1.79,1.73,1.69,1.58,1.56,
+                                                 1.53,1.57,1.49,1.57,1.63,1.65,1.57,1.46,1.4,1.29,1.23,
+                                                 1.2,1.12,1.19,1.16,1.1,1.11,1.04,1.04,1.01,1.05,0.94,
+                                                 0.84,0.84,0.79),
+                                    'years' = seq(1901,1935,by=1)),
+                             'Denmark'=list('values' = 0.001*c(0.71,0.63,0.63,0.57,0.61,0.57,0.54,0.54,0.48,0.44),
+                                            'years'=seq(1925,1934,by=1))
+                             ),
+    tb_mortality_data_as_df = NA,
     
     initialize = function(){
       self$read_mortality_data()
+      self$process_tb_mortality_data()
     },
     
     read_mortality_data = function(){
@@ -242,6 +254,20 @@ Inputs <- R6Class(
         self$mortality_data[[sex]] = data
       }
       self$mortality_data$all = 0.5*(self$mortality_data$male+self$mortality_data$female)
+    },
+    
+    process_tb_mortality_data = function(){
+      n_rows = length(self$tb_mortality_data$Sweden$years) + length(self$tb_mortality_data$Denmark$years)
+      self$tb_mortality_data_as_df = data.frame('year'=rep(0,n_rows),'mortality'=rep(0.,n_rows))
+      i_row=0
+      for (country in c('Sweden', 'Denmark')){
+        for (i in 1:length(self$tb_mortality_data[[country]]$years)){
+            i_row = i_row + 1
+            self$tb_mortality_data_as_df$year[i_row] = self$tb_mortality_data[[country]]$years[i]
+            self$tb_mortality_data_as_df$mortality[i_row] = self$tb_mortality_data[[country]]$values[i]
+        }
+      }
+      self$tb_mortality_data_as_df = self$tb_mortality_data_as_df[order(self$tb_mortality_data_as_df$year),]
     },
     
     add_cohort = function(author, smear_status, cohort_name, year_range,
@@ -492,8 +518,9 @@ Analysis <- R6Class(
       priors = 'normal',
       base_path = '',
       tracked_pars=c(),
+      substract_tb_mortality = TRUE,
       
-      initialize = function(smear_status,random_effects,estimate_mu, analysis_name, restrict_to=NA, priors='normal'){
+      initialize = function(smear_status,random_effects,estimate_mu, analysis_name, restrict_to=NA, priors='normal', substract_tb_mortality=TRUE){
         self$inputs = inputs
         self$smear_status = smear_status
         self$random_effects = random_effects
@@ -502,6 +529,7 @@ Analysis <- R6Class(
         self$produce_main_dataframe()
         self$restrict_to = restrict_to
         self$priors = priors
+        self$substract_tb_mortality = substract_tb_mortality
         
         # create directories
         effect_string = 'outputs/stan/fixed_effect'
@@ -520,7 +548,8 @@ Analysis <- R6Class(
       },
       
       produce_main_dataframe = function(){
-        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(),'smear_status'=character(), 'cohort_id'=integer(), 'mu'=numeric(),'mu_sd'=numeric())
+        self$all_data = data.frame('t_start'=double(), 'delta_t'=double(), 'n_at_risk'=integer(), 'n_new_deaths'=integer(),'smear_status'=character(), 
+                                   'cohort_id'=integer(), 'mu'=numeric(),'mu_sd'=numeric(), 'start_year'=numeric(), 'end_year'=numeric())
         
         for (c in self$inputs$cohorts){
           if (c$smear_status %in% self$smear_status){
@@ -641,8 +670,14 @@ Analysis <- R6Class(
           self$tracked_pars = c("mu_t","gamma","e_mu")
         }else if(self$random_effects && self$estimate_mu){
           stan_file = "random_effect_model_fitted_mu.stan"
+          if (self$substract_tb_mortality){
+            stan_file = "random_effect_model_fitted_mu_substracted_tb_mortality.stan"
+          }
           if (self$priors == 'gamma'){
             stan_file = "random_effect_model_fitted_mu_gamma_priors.stan"
+            if (self$substract_tb_mortality){
+              stan_file = "random_effect_model_fitted_mu_gamma_priors_substracted_tb_mortality.stan"
+            }
           }
           self$tracked_pars = c("lambda_mu_t","sigma_mu_t","lambda_gamma","sigma_gamma","e_mu","mu_t","gamma")
         }else{ # random effect with fixed mu
@@ -650,13 +685,25 @@ Analysis <- R6Class(
           self$tracked_pars = c("mu_t","gamma","lambda_mu_t","sigma_mu_t","lambda_gamma","sigma_gamma")
         }
         
+        
+        # if we substract population tb mortality rate from mu, we load more data and track more parameters:
+        if (self$substract_tb_mortality){
+          standat$nrow_tb_mortality_data = nrow(self$inputs$tb_mortality_data_as_df)
+          standat$tb_mortality_data_years = array(self$inputs$tb_mortality_data_as_df$year, dim=c(length(self$inputs$tb_mortality_data_as_df$year),1))
+          standat$tb_mortality_data_values = self$inputs$tb_mortality_data_as_df$mortality
+          standat$start_year = dat$start_year
+          standat$end_year = dat$end_year
+          
+          self$tracked_pars = c(self$tracked_pars, 'a', 'b')
+        }
+        
         # fit the model
-        print("Start Stan fit")
+        print("Start Stan fit using code from:")
+        print(stan_file)
         self$stan_fit <- stan(file = stan_file,pars = self$tracked_pars,
                      data = standat, chains=n_chains,
                      iter = n_iterations, warmup = n_burned, thin = thinning_period, 
                      init = "random")
-
       }
      )
 )
