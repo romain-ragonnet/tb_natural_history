@@ -321,8 +321,8 @@ Inputs <- R6Class(
       for (coh in cohorts_to_plot){
         count = count+1
         color = colours_by_smear[[coh$smear_status]]
-        points(coh$times, coh$perc_death, col=color, pch=20, cex=1)
-        lines(coh$times, coh$perc_death, col=color, lwd=2)
+        points(coh$times, coh$perc_death, col=color, pch=20, cex=1.5)
+        lines(coh$times, coh$perc_death, col=color, lwd=2, lty=5)
         if (coh$smear_status == 'positive'){
           count_sp = count_sp + 1
         }else if (coh$smear_status == 'negative'){
@@ -333,7 +333,7 @@ Inputs <- R6Class(
       txt1 = paste('smear-positive (n=',count_sp,')',sep='')
       txt2 = paste('smear-negative (n=',count_sn,')',sep='')
       
-      legend(x = 20, y=50,legend = c(txt1, txt2),lwd=c(3,3),cex=1.3,col = c(colours_by_smear$positive,colours_by_smear$negative),bty = 'n')
+      legend(x = 20, y=50,legend = c(txt1, txt2),lwd=c(3,3),lty=c(3,3),pch=c(20,20),cex=1.3,col = c(colours_by_smear$positive,colours_by_smear$negative),bty = 'n')
       
       dev.off()
     },
@@ -597,6 +597,18 @@ Analysis <- R6Class(
                   self$cohort_ids = c(self$cohort_ids, c$id)
                 }
               }
+              if (restrict_to == 'hospital'){
+                if(grepl('ospital',c$description) | grepl('anatori',c$description) | grepl('ispendar',c$description)){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }
+              }
+              if (restrict_to == 'non-hospital'){
+                if(!grepl('ospital',c$description) & !grepl('anatori',c$description) & !grepl('ispendar',c$description)){
+                  self$all_data = rbind(self$all_data, c$formatted_data)
+                  self$cohort_ids = c(self$cohort_ids, c$id)
+                }
+              }
                 
             }else{
               self$all_data = rbind(self$all_data, c$formatted_data)
@@ -778,6 +790,7 @@ Outputs <- R6Class(
              xlim=c(0,xmax[[par_base]]),ylim=c(0,height_plot),xlab='/year',ylab='')
         axis(side=1, lwd = 3, lwd.ticks = 3, cex.axis=4)
         h = 0
+        combined_sample = c()  # will merge all cohort-specific samples together, using cohort sizes as weights
         for (i in rev(self$analysis$cohort_ids)){
           h = h+1
           index = length(self$analysis$cohort_ids) - (h-1)
@@ -786,14 +799,13 @@ Outputs <- R6Class(
           qt = quantile(x,c(0.025,0.5,0.975),names = FALSE)
           
           coh = NA
-          for (coh in self$analysis$inputs$cohorts){
-            if (coh$id == i){
+          for (coho in self$analysis$inputs$cohorts){
+            if (coho$id == i){
+              coh = coho
               break
             }
           }
-          if (is.na(coh)){
-            print("WARNING!!! no cohort found for given id")
-          }
+          
           this_color = my_red
           if(grepl('anatori',coh$description)){
             this_color = my_purple
@@ -813,6 +825,10 @@ Outputs <- R6Class(
           points(x=qt[2], y=h, cex=this_cex, pch=16, col=this_color)
           str = paste(par_base, ' for cohort ', i, ': ', round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
           to_write = c(to_write, str)
+          
+          # update combined_sample
+          repeat_sample = rep(x,this_size)
+          combined_sample = c(combined_sample, repeat_sample)
         }
         # plot mean estimates based on random-effect model
         hyper_par_mean = paste('lambda_',par_base,sep='')
@@ -826,14 +842,21 @@ Outputs <- R6Class(
         qt = quantile(ln_means,c(0.025,0.5,0.975),names = FALSE)
         lines(x = c(qt[1], qt[3]), y=c(-0.5,-0.5),  lwd=lwd)
         points(x=qt[2], y=-0.5, cex=5, pch=18)
-        str = paste("Estimates for ",par_base,": ", round(qt[2],3), " (",round(qt[1],3),"-",round(qt[3],3),")",sep='')
+        str = paste("Estimates for ",par_base," (mean hyperparameter): ", round(qt[2],3), " (95CI ",round(qt[1],3),"-",round(qt[3],3),")",sep='')
+        to_write = c(to_write, str)
+        to_write = c(to_write, "")
+        
+        # estimates for combined sample
+        qt_combined = quantile(combined_sample,c(0.25,0.5,0.75),names = FALSE)
+        lines(x = c(qt_combined[1], qt_combined[3]), y=c(-1.5,-1.5),  lwd=lwd)
+        points(x=qt_combined[2], y=-1.5, cex=5, pch=18)
+        str = paste("Estimates for ",par_base," (combined sample): ", round(qt_combined[2],3), " (IQR ",round(qt_combined[1],3),"-",round(qt_combined[3],3),")",sep='')
         to_write = c(to_write, str)
         to_write = c(to_write, "")
       
         abline(h=abline_h)
         
         text(x=xmax[[par_base]]/2,y=h+1,labels=par_names[[par_base]], cex=5,adj=0.5)
-        
       }
       
       writeLines(to_write, fileConn)
@@ -841,6 +864,8 @@ Outputs <- R6Class(
       
       dev.off()
       
+      x11();
+      hist(combined_sample, main = par_base)
       # generate cohort profiles with fitted parameters
       if (generate_cohort_profiles){
         h=1
