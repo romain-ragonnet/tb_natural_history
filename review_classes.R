@@ -310,7 +310,7 @@ Inputs <- R6Class(
         cohorts_to_plot = c(cohorts_to_plot, coh)
       }
       
-      filename = 'outputs/all_cohorts'
+      filename = 'outputs/all_cohorts_test'
       title = ''
       open_figure(filename, 'png', w=12, h=9)
       plot(0,0,xlim=c(0,xmax), ylim=c(0,100), xlab='time after recruitment (years)',
@@ -321,8 +321,8 @@ Inputs <- R6Class(
       for (coh in cohorts_to_plot){
         count = count+1
         color = colours_by_smear[[coh$smear_status]]
-        points(coh$times, coh$perc_death, col=color, pch=20, cex=1.5)
-        lines(coh$times, coh$perc_death, col=color, lwd=2, lty=5)
+        points(coh$times, coh$perc_death, col=color, pch=20, cex=1.2)
+        lines(coh$times, coh$perc_death, col=color, lwd=1, lty=1.2)
         if (coh$smear_status == 'positive'){
           count_sp = count_sp + 1
         }else if (coh$smear_status == 'negative'){
@@ -333,7 +333,7 @@ Inputs <- R6Class(
       txt1 = paste('smear-positive (n=',count_sp,')',sep='')
       txt2 = paste('smear-negative (n=',count_sn,')',sep='')
       
-      legend(x = 20, y=50,legend = c(txt1, txt2),lwd=c(3,3),lty=c(3,3),pch=c(20,20),cex=1.3,col = c(colours_by_smear$positive,colours_by_smear$negative),bty = 'n')
+      legend(x = 20, y=50,legend = c(txt1, txt2),lwd=c(2,2),lty=c(1,1),pch=c(20,20),cex=1.2,col = c(colours_by_smear$positive,colours_by_smear$negative),bty = 'n')
       
       dev.off()
     },
@@ -598,13 +598,13 @@ Analysis <- R6Class(
                 }
               }
               if (restrict_to == 'hospital'){
-                if(grepl('ospital',c$description) | grepl('anatori',c$description) | grepl('ispendar',c$description)){
+                if(grepl('ospital',c$description) | grepl('anatori',c$description) | grepl('ispensar',c$description)){
                   self$all_data = rbind(self$all_data, c$formatted_data)
                   self$cohort_ids = c(self$cohort_ids, c$id)
                 }
               }
               if (restrict_to == 'non-hospital'){
-                if(!grepl('ospital',c$description) & !grepl('anatori',c$description) & !grepl('ispendar',c$description)){
+                if(!grepl('ospital',c$description) & !grepl('anatori',c$description) & !grepl('ispensar',c$description)){
                   self$all_data = rbind(self$all_data, c$formatted_data)
                   self$cohort_ids = c(self$cohort_ids, c$id)
                 }
@@ -620,6 +620,28 @@ Analysis <- R6Class(
         
       },
 
+      fit_tb_mortality_exponential = function(n_chains, n_iterations, n_burned, thinning_period){
+        library(rstan)
+        if (n_chains>1){
+          options(mc.cores = parallel::detectCores())
+        }else{
+          options(mc.cores = 1)
+        }
+        rstan_options(auto_write = TRUE)
+        
+        standat = {}
+        standat$nrow_tb_mortality_data = nrow(self$inputs$tb_mortality_data_as_df)
+        standat$tb_mortality_data_years = array(self$inputs$tb_mortality_data_as_df$year, dim=c(length(self$inputs$tb_mortality_data_as_df$year),1))
+        standat$tb_mortality_data_values = self$inputs$tb_mortality_data_as_df$mortality
+
+        self$tracked_pars = c(self$tracked_pars, 'a', 'b')
+        
+        self$stan_fit <- stan(file = 'tb_mortality_exponential_fit.stan',pars = self$tracked_pars,
+                              data = standat, chains=n_chains,
+                              iter = n_iterations, warmup = n_burned, thin = thinning_period, 
+                              init = "random")
+      },
+      
       run_mcmc_stan =function(model,n_chains, n_iterations, n_burned, thinning_period){
         print("Loading rstan...")
         library(rstan)
@@ -763,14 +785,16 @@ Outputs <- R6Class(
       par(mar=c(7.1, 4.1, 0.2, 2.1))
       cex=5
       x_write = 5
-      plot(0,0,type='n',bty='n',axes=FALSE,xlim=c(0,10),ylim=c(0,height_plot), xlab='',ylab='')
+      plot(0,0,type='n',bty='n',axes=FALSE,xlim=c(0,10),ylim=c(-2,height_plot), xlab='',ylab='')
       h = 0
       for (i in rev(self$analysis$cohort_ids)){
         h = h+1
         text(x = x_write,y=h,labels = i, cex=cex*0.75,adj=0.5)
       }
       text(x=x_write,y=h+1,labels='Cohort #', cex=cex,adj=0.5)
-      text(x=x_write,y=-0.5,labels='overall', cex=cex,adj=0.5)
+      text(x=x_write,y=-0.5,labels='mean', cex=cex,adj=0.5)
+      text(x=x_write,y=-1.5,labels='combined', cex=cex,adj=0.5)
+      
       abline(h = abline_h)
       
       # Plot cohort-specific results for each parameter
@@ -787,7 +811,7 @@ Outputs <- R6Class(
       par(mgp=c(5, 3, 0))
       for (par_base in self$analysis$param_bases){
         plot(0,0,type='n',main='',bty='n',axes=FALSE, cex.lab = 4,
-             xlim=c(0,xmax[[par_base]]),ylim=c(0,height_plot),xlab='/year',ylab='')
+             xlim=c(0,xmax[[par_base]]),ylim=c(-2,height_plot),xlab='/year',ylab='')
         axis(side=1, lwd = 3, lwd.ticks = 3, cex.axis=4)
         h = 0
         combined_sample = c()  # will merge all cohort-specific samples together, using cohort sizes as weights
@@ -807,7 +831,7 @@ Outputs <- R6Class(
           }
           
           this_color = my_red
-          if(grepl('anatori',coh$description)){
+          if(grepl('ospital',coh$description) | grepl('anatori',coh$description) | grepl('ispensar',coh$description)){
             this_color = my_purple
           }
           this_size = coh$cohort_size 
@@ -847,10 +871,10 @@ Outputs <- R6Class(
         to_write = c(to_write, "")
         
         # estimates for combined sample
-        qt_combined = quantile(combined_sample,c(0.25,0.5,0.75),names = FALSE)
+        qt_combined = quantile(combined_sample,c(0.025,0.5,0.975),names = FALSE)
         lines(x = c(qt_combined[1], qt_combined[3]), y=c(-1.5,-1.5),  lwd=lwd)
         points(x=qt_combined[2], y=-1.5, cex=5, pch=18)
-        str = paste("Estimates for ",par_base," (combined sample): ", round(qt_combined[2],3), " (IQR ",round(qt_combined[1],3),"-",round(qt_combined[3],3),")",sep='')
+        str = paste("Estimates for ",par_base," (combined sample): ", round(qt_combined[2],3), " (95CI ",round(qt_combined[1],3),"-",round(qt_combined[3],3),")",sep='')
         to_write = c(to_write, str)
         to_write = c(to_write, "")
       
@@ -892,6 +916,30 @@ Outputs <- R6Class(
       # save workspace
       filename = paste(self$analysis$base_path,'workspace.RData',sep='')
       save.image(filename)
+    },
+    
+    plot_hyper_posteriors = function(){
+      base_path = self$analysis$base_path
+      data = as.data.frame(self$analysis$stan_fit)
+
+      
+      filename= paste(base_path, 'hyper_posteriors',sep='')
+      open_figure(filename, 'png', w=8, h=8)
+      par(mfrow = c(2,2), mar=c(5.1,4.1,2.1,2.1))
+      
+      hist(data$lambda_mu_t, xlab='TB mortality rate (mean)', main='',breaks=20)
+      hist(data$lambda_gamma, xlab='self-recovery rate (mean)', main='',breaks=20)
+      
+      hist(data$sigma_mu_t, xlab='TB mortality rate (sd)', main='',breaks=20)
+      hist(data$sigma_gamma, xlab='self-recovery rate (sd)', main='',breaks=20)
+
+      dev.off()
+      
+      filename= paste(base_path, 'hyper_posteriors_pairs',sep='')
+      open_figure(filename, 'png', w=8, h=6)
+      plot(data$lambda_mu_t, data$lambda_gamma, cex=.5, pch=19,xlab='mean TB mortality rate (/y)', ylab = 'mean self-recovery rate (/y)')
+      dev.off()
+      
     },
     
     produce_stan_outputs = function(){

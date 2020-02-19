@@ -107,12 +107,11 @@ model {
   real adjusted_mu;
   real mean_year;
   int index[2,1];
-  int t0;
-  int t1;
 
   for (i in 1:N) {
     mean_year = 0.5*(start_year[i] + end_year[i]);
-    modelled_tb_mortality = a*exp(-b*(mean_year - 1900)); 
+    // modelled_tb_mortality = a*exp(-b*(mean_year + t_start[i] - 1900)); 
+    modelled_tb_mortality = a*exp(1900*b)/(b*(end_year[i]-start_year[i]))*(exp(-b*start_year[i])-exp(-b*end_year[i]));
     adjusted_mu = e_mu[cohort_id[i]] - modelled_tb_mortality;
     p[i] = evaluate_p(t_start[i],
                       delta_t[i],
@@ -135,10 +134,7 @@ model {
   }
   
   // substracted tb mortality 
-  for (i in 1:N){
-    t0 = start_year[i];
-    t1 = end_year[i];
-    for (year in t0:t1){
+    for (year in 1901:1935){
       modelled_tb_mortality = a*exp(-b*(year - 1900));
       index = find_year_indices(year, tb_mortality_data_years);
       for (j in 1:2){
@@ -147,6 +143,6 @@ model {
         }
       }
     }
-  }
+  
 }
 

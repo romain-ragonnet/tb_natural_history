@@ -3,16 +3,22 @@ library(xlsx)
 source("G:/My Drive/R_toolkit/graph_tools.R")
 
 
+draw_vlines <- function(values,color,ymin=0){
+  shade_color=rgb(246,190,190,alpha=127,maxColorValue = 255)
+  rect(xleft = values[2],ybottom = ymin,xright =values[3] ,ytop = 100,border = NA,col = shade_color)
+  segments(x0 = values[1], x1=values[1],y0=ymin,y1=100,lty=2,col=color)
+}
+
 classes = rep('character', 16)
 data=read.xlsx(file = 'params.xlsx',sheetIndex = 1,colClasses = classes,stringsAsFactors=FALSE)
 
 estimates = list(
-  'mu_t_sp' = c(0.39,0.33,0.453),
-  'mu_t_sn' = c(0.025,0.016,0.036),
-  'gamma_sp' = c(0.234,0.178,0.294),
-  'gamma_sn' = c(0.148,0.085,0.242),
-  'duration_sp'=c(1.58,1.38,1.82),
-  'duration_sn'=c(5.47,3.54,8.67),
+  'mu_t_sp' = c(0.389,0.335,0.449),
+  'mu_t_sn' = c(0.025,0.017,0.035),
+  'gamma_sp' = c(0.231,0.177,0.288),
+  'gamma_sn' = c(0.130,0.073,0.209),
+  'duration_sp'=c(1.57,1.37,1.81),
+  'duration_sn'=c(5.35,3.42,8.23),
   'ratio'=c(15.7422,10.51824,24.63153)
 )
 
@@ -80,6 +86,7 @@ plot_data = function(data,smear_status='sp'){
     
     segments(x0 = estimates[[param_name]][2] ,x1= estimates[[param_name]][3], y0=0,y1=0,col=col_estimates,lwd=LWD)
     points(x= estimates[[param_name]][1],y = 0, col=col_estimates, cex=CEX, pch=PCH)
+    draw_vlines(estimates[[param_name]],col_estimates)
     for (i in 1:n){
       h= i
       if (!is.na(data[[param_name]][i])){
@@ -108,6 +115,9 @@ plot_data = function(data,smear_status='sp'){
   rect(par("usr")[1],par("usr")[3],par("usr")[2],par("usr")[4],col = bg_grey)
   segments(x0 = estimates[[param_name]][2] ,x1= estimates[[param_name]][3], y0=0,y1=0,col=col_estimates,lwd=LWD)
   points(x= estimates[[param_name]][1],y = 0, col=col_estimates, cex=CEX, pch=PCH)
+  draw_vlines(estimates[[param_name]],col_estimates)
+  
+  
   for (i in 1:n){
     h= i
     mu_t = 0
@@ -157,6 +167,7 @@ plot_ratios_sp_sn = function(data){
   plot(0,0,type='n',xlim=c(0,10),ylim=c(0,n),main=expression('Study'),bty='n',yaxt='n',xaxt='n',
        cex.main=cex_header,xlab="",ylab="")
   text(x = 1, y=0,labels = "New estimates", pos=4,cex=2.5,col = col_estimates)
+  names=c()
   for (i in 1:n){
     h= i
     name = paste(data$Author[i], data$Year[i], sep=" ")
@@ -164,7 +175,13 @@ plot_ratios_sp_sn = function(data){
       name = 'Menzies 2018*' # agegroup 15-25
     }
     text(x = 1, y=h,labels = name,pos=4,cex=2.5)
+    names = c(names,name)
   }
+  string = ''
+  for (name in rev(names)){
+    string = paste(string, name,sep=', ')
+  }
+  print(string)
   
   plot(0,0,type='n',xlim=c(0,25),ylim=c(0,n),main=expression(""),bty='n',yaxt='n',
        cex.main=cex_header,xlab="",ylab="")
@@ -172,6 +189,9 @@ plot_ratios_sp_sn = function(data){
   
   segments(x0 = estimates$ratio[2] ,x1= estimates$ratio[3], y0=0,y1=0,col=col_estimates,lwd=LWD)
   points(x= estimates$ratio[1],y = 0, col=col_estimates, cex=CEX, pch=PCH)
+  
+  draw_vlines(estimates$ratio,col_estimates)
+  
   for (i in 1:n){
     h= i
     if (!is.na(data$mu_t_sp[i])){
@@ -197,8 +217,8 @@ plot_ratios_sp_sn = function(data){
   dev.off()
 }
 
-#for (smear_status in c('sp','sn')){
-#  plot_data(data,smear_status)
-#}
+for (smear_status in c('sp','sn')){
+  plot_data(data,smear_status)
+}
 
 plot_ratios_sp_sn(data)
