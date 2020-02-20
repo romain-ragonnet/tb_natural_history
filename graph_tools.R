@@ -30,6 +30,8 @@ open_figure <- function(filename, format, w=10, h=10, res=300){
     png(filepath, width=w, height=h, units='in', res=res)
   }else if (format == 'jpg' || format == 'jpeg'){
     jpeg(filepath, width=w, height=h, units='in', res=res)
+  }else if(format == 'tif' || format == 'tiff'){
+    tiff(filepath, width=w, height=h, units='in', res=res)
   }else{
     print("The file format is not recognised")
   }

@@ -312,7 +312,7 @@ Inputs <- R6Class(
       
       filename = 'outputs/all_cohorts_test'
       title = ''
-      open_figure(filename, 'png', w=12, h=9)
+      open_figure(filename, 'tiff', w=12, h=9)
       plot(0,0,xlim=c(0,xmax), ylim=c(0,100), xlab='time after recruitment (years)',
            ylab='cumulative death %', main=title,bty='n',cex.lab=1.3)
       count = 0
@@ -763,7 +763,8 @@ Outputs <- R6Class(
       height_plot = length(self$analysis$cohort_ids) + 2 
       
       filename= paste(base_path, 'params_by_cohort',sep='')
-      open_figure(filename, 'png', w=25, h=height_plot + 2)
+      open_figure(filename, 'tiff', w=25, h=height_plot + 2)
+      
       
       layout(matrix(c(1,1,1,2,3,4), 2, 3, byrow = TRUE), 
              widths=c(1,2,2), heights=c(1,height_plot))
@@ -1012,6 +1013,9 @@ Outputs <- R6Class(
       base_path = self$analysis$base_path 
       filename = paste(base_path,'tb_duration_and_cfr.txt',sep='')
       
+      empty_matrix = matrix(data=NA,nrow=4,ncol=3)
+      out_dict = list("duration"=empty_matrix, "cfr_2"=empty_matrix, "cfr_5"=empty_matrix, "cfr_10"=empty_matrix)
+      
       to_write = c()
       fileConn<-file(filename)
         years_to_loop = c(2,5,10)
@@ -1020,7 +1024,9 @@ Outputs <- R6Class(
           to_write = c(to_write,str)
           
           mu_s = c(0.005, 0.01, 0.05, 0.1)
+          cpt_mu = 0
           for(mu in mu_s){
+            cpt_mu = cpt_mu + 1
             cf = 1 - (gamma / (gamma + mu_t)) * exp(-mu * year) -
               (mu_t / (gamma + mu_t)) * exp(-(gamma + mu + mu_t) * year)
             this_y = round(100*median(cf))
@@ -1030,20 +1036,54 @@ Outputs <- R6Class(
             str = paste("mu=", mu, ": CFR=", this_y, " (",this_y_low,'-',this_y_high,')', sep='')
             to_write = c(to_write,str)
             
+            out_dict[[paste('cfr_',year, sep='')]][cpt_mu,1] = this_y
+            out_dict[[paste('cfr_',year, sep='')]][cpt_mu,2] = this_y_low
+            out_dict[[paste('cfr_',year, sep='')]][cpt_mu,3] = this_y_high
+            
             if (year == years_to_loop[length(years_to_loop)]){
               durations = 1/(mu_t+gamma+mu)
               d = round(median(durations),2)
               d_low = round(quantile(durations,probs = 0.025),2)
               d_high = round(quantile(durations,probs = 0.975),2)
               str = paste("mu=", mu, ": duration=", d, " (",d_low,'-',d_high,')', sep='')
+              
+              out_dict$duration[cpt_mu,1] = d
+              out_dict$duration[cpt_mu,2] = d_low
+              out_dict$duration[cpt_mu,3] = d_high
+              
               to_write = c(to_write,str)
             }
           }
         }
         writeLines(to_write, fileConn)
       close(fileConn)
+      return(out_dict)
     }    
   )
 )
+
+
+plot_durations_and_cfrs <- function(values_to_plot){
+  filename= paste('durations_cfrs',sep='')
+  open_figure(filename, 'pdf', w=10, h=8)
+  par(mfrow = c(2,2), mar=c(5.1,4.1,2.1,2.1))
+  
+  title=list('duration'='Duration of untreated TB disease', 'cfr_2'= 'Cumulative death proportion after 2 years', 
+             'cfr_5'= 'Cumulative death proportion after 5 years', 'cfr_10' = 'Cumulative death proportion after 10 years')
+  
+  ylabs =list('duration'='years', 'cfr_2'= '%', 
+             'cfr_5'= '%', 'cfr_10' = '%')
+  ymax = list('duration'= 7 , 'cfr_2'= 100, 
+              'cfr_5'= 100, 'cfr_10' = 100)
+  
+  for (key in c('duration', 'cfr_2', 'cfr_5', 'cfr_10')){
+    plot(0, ylab=ylabs[[key]], xlab='', main=title[[key]], xaxt='n', ylim=c(0,ymax[[key]]), xlim=c(0,14))
+    mtext('SP-TB',1,line = 1,at = 3.5)
+    mtext('SN-TB',1,line = 1,at = 10.5)
+    
+  }
+  
+  dev.off()
+} 
 
 source('load_data.R')
